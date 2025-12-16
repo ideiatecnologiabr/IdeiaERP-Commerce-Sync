@@ -1,0 +1,31 @@
+services:
+  app-db:
+    image: mariadb:10.11
+    container_name: ideiaerp-sync-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ideiaerp_sync
+      MYSQL_USER: ideiaerp_user
+      MYSQL_PASSWORD: ideiaerp_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - app-db-data:/var/lib/mysql
+      - ./docker/mariadb/init:/docker-entrypoint-initdb.d
+    networks:
+      - ideiaerp-network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  app-db-data:
+    driver: local
+
+networks:
+  ideiaerp-network:
+    driver: bridge
+

@@ -1,0 +1,53 @@
+# See http://help.github.com/ignore-files-in-git/ for more about ignoring files.
+
+# Compiled output
+/dist
+/tmp
+/out-tsc
+*.js.map
+
+# Node
+/node_modules
+npm-debug.log
+yarn-error.log
+
+# IDEs and editors
+.idea/
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/*
+
+# NX
+.nx/cache
+.nx/workspace-data
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build outputs
+*.exe
+*.bin
+dist/
+
+# PM2
+.pm2/
+
+# Logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+

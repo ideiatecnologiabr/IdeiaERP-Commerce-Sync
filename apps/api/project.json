@@ -1,0 +1,76 @@
+{
+    "name": "api",
+    "$schema": "../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/api/src",
+    "projectType": "application",
+    "targets": {
+      "build": {
+        "executor": "@nx/js:tsc",
+        "outputs": ["{options.outputPath}"],
+        "options": {
+          "outputPath": "dist/apps/api",
+          "main": "apps/api/src/main.ts",
+          "tsConfig": "apps/api/tsconfig.app.json",
+          "assets": ["apps/api/src/assets"],
+          "generatePackageJson": true,
+          "skipTypeCheck": false
+        },
+        "configurations": {
+          "production": {
+            "sourceMap": false
+          },
+          "development": {
+            "sourceMap": true
+          }
+        }
+      },
+      "serve": {
+        "executor": "@nx/js:node",
+        "options": {
+          "buildTarget": "api:build",
+          "watch": true
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "api:build:development"
+          },
+          "production": {
+            "buildTarget": "api:build:production"
+          },
+          "debug": {
+            "buildTarget": "api:build:development",
+            "watch": true,
+            "inspect": true
+          }
+        },
+        "defaultConfiguration": "development"
+      },
+      "lint": {
+        "executor": "@nx/eslint:lint",
+        "outputs": ["{options.outputFile}"]
+      },
+      "test": {
+        "executor": "@nx/jest:jest",
+        "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+        "options": {
+          "jestConfig": "apps/api/jest.config.ts",
+          "passWithNoTests": true
+        }
+      },
+      "migration:run": {
+        "executor": "@nx/run-commands:run-commands",
+        "options": {
+          "command": "tsx apps/api/src/scripts/runMigrations.ts",
+          "cwd": "{workspaceRoot}"
+        }
+      },
+      "migration:revert": {
+        "executor": "@nx/run-commands:run-commands",
+        "options": {
+          "command": "tsx apps/api/src/scripts/revertMigrations.ts",
+          "cwd": "{workspaceRoot}"
+        }
+      }
+    },
+    "tags": ["type:app", "scope:api"]
+  }

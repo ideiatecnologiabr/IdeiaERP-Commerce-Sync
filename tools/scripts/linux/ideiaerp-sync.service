@@ -1,0 +1,21 @@
+[Unit]
+Description=IdeiaERP Commerce Sync API
+After=network.target
+
+[Service]
+Type=simple
+User=ideiaerp
+WorkingDirectory=/opt/ideiaerp-sync
+ExecStart=/usr/bin/node /opt/ideiaerp-sync/dist/apps/api/main.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ideiaerp-sync
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target
+
+
+

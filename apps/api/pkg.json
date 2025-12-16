@@ -1,0 +1,18 @@
+{
+  "pkg": {
+    "scripts": [
+      "dist/apps/api/**/*.js"
+    ],
+    "assets": [
+      "package.json"
+    ],
+    "targets": [
+      "node18-win-x64",
+      "node18-linux-x64"
+    ],
+    "outputPath": "dist"
+  }
+}
+
+
+

@@ -1,0 +1,81 @@
+import { SyncOrdersCommand } from '../SyncOrdersCommand';
+import { logger } from '../../../../config/logger';
+import { ProductQueryService } from '../../services/ProductQueryService';
+import { AdapterFactory, PlatformType } from '../../../integrations/AdapterFactory';
+import { PlatformConfig } from '../../../integrations/ports/PlatformConfig';
+
+export class SyncOrdersCommandHandler {
+  async handle(command: SyncOrdersCommand): Promise<void> {
+    logger.info(`Starting orders sync for loja ${command.lojavirtual_id}`, {
+      lojavirtual_id: command.lojavirtual_id,
+      since: command.since,
+    });
+
+    try {
+      const productQueryService = new ProductQueryService();
+
+      // 1. Load lojavirtual
+      const loja = await productQueryService.getLojaVirtual(command.lojavirtual_id);
+
+      if (!loja) {
+        logger.error(`Loja virtual ${command.lojavirtual_id} not found or inactive`);
+        return;
+      }
+
+      // Validate platform configuration
+      if (!loja.plataforma_nome) {
+        logger.error(`Loja virtual ${command.lojavirtual_id} has no plataforma_nome configured`);
+        return;
+      }
+
+      if (!loja.urlbase) {
+        logger.error(`Loja virtual ${command.lojavirtual_id} has no urlbase configured`);
+        return;
+      }
+
+      if (!loja.apikey) {
+        logger.error(`Loja virtual ${command.lojavirtual_id} has no apikey configured`);
+        return;
+      }
+
+      // 2. Create adapter with platform configuration
+      const platform = this.getPlatformType(loja.plataforma_nome);
+      const platformConfig: PlatformConfig = {
+        baseUrl: loja.urlbase,
+        apiKey: loja.apikey,
+        apiUser: loja.apiuser || undefined,
+      };
+
+      const adapter = AdapterFactory.create(platform, platformConfig);
+
+      // TODO: Steps 3-4 will be implemented later
+      // 3. Get orders from platform adapter
+      // 4. Process and save to ERP (staging)
+      // 5. Log sync
+
+      logger.info(`Orders sync completed for loja ${command.lojavirtual_id}`);
+    } catch (error: any) {
+      logger.error('Error during orders sync', {
+        lojavirtual_id: command.lojavirtual_id,
+        error: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  private getPlatformType(plataforma_nome: string): PlatformType {
+    const normalized = plataforma_nome.toLowerCase().trim();
+    
+    if (normalized.includes('opencart') || normalized.includes('open-cart')) {
+      return 'opencart';
+    }
+    
+    if (normalized.includes('vtex')) {
+      return 'vtex';
+    }
+
+    return 'opencart';
+  }
+}
+

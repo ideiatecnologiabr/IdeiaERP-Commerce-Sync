@@ -1,0 +1,26 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ideia/shared": ["libs/shared/src/index.ts"],
+      "@ideia/shared/types": ["libs/shared/src/lib/types/index.ts"],
+      "@ideia/shared/utils": ["libs/shared/src/lib/utils/index.ts"],
+      "@ideia/shared/constants": ["libs/shared/src/lib/constants/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}
+
