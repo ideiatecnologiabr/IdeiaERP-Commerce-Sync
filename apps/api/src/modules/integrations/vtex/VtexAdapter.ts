@@ -1,23 +1,35 @@
-import { CommercePlatformAdapter, ProductDTO, OrderDTO, OrderFilters } from '../ports/CommercePlatformAdapter';
+import { CommercePlatformAdapter, ProductDTO, OrderDTO, OrderFilters, HealthCheckResult } from '../ports/CommercePlatformAdapter';
 import { PlatformConfig } from '../ports/PlatformConfig';
+import { TokenManager } from '../services/TokenManager';
+import { AuthAdapter } from '../ports/AuthAdapter';
 import { logger } from '../../../config/logger';
 
 export class VtexAdapter implements CommercePlatformAdapter {
   private baseUrl: string;
-  private apiKey: string;
+  private apiKey?: string;
   private apiUser?: string | null;
+  private config: PlatformConfig;
+  private tokenManager: TokenManager;
+  private authAdapter: AuthAdapter | null;
+  private lojavirtual_id: string;
 
-  constructor(config: PlatformConfig) {
+  constructor(
+    config: PlatformConfig,
+    tokenManager: TokenManager,
+    authAdapter: AuthAdapter | null,
+    lojavirtual_id: string
+  ) {
     if (!config.baseUrl) {
       throw new Error('VTEX baseUrl is required');
-    }
-    if (!config.apiKey) {
-      throw new Error('VTEX apiKey is required');
     }
 
     this.baseUrl = config.baseUrl;
     this.apiKey = config.apiKey;
     this.apiUser = config.apiUser;
+    this.config = config;
+    this.tokenManager = tokenManager;
+    this.authAdapter = authAdapter;
+    this.lojavirtual_id = lojavirtual_id;
   }
 
   // Stub implementation for future VTEX integration
@@ -51,7 +63,13 @@ export class VtexAdapter implements CommercePlatformAdapter {
     logger.warn('VTEX adapter not implemented yet', { id });
     throw new Error('VTEX adapter not implemented');
   }
+
+  async checkHealth(): Promise<HealthCheckResult> {
+    logger.warn('VTEX adapter health check not implemented yet');
+    return { online: false, error: 'VTEX adapter not implemented' };
+  }
 }
+
 
 
 

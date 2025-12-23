@@ -53,6 +53,11 @@ export interface OrderFilters {
   page?: number;
 }
 
+export interface HealthCheckResult {
+  online: boolean;
+  error?: string;
+}
+
 export interface CommercePlatformAdapter {
   createProduct(data: ProductDTO): Promise<string>;
   updateProduct(id: string, data: ProductDTO): Promise<void>;
@@ -60,6 +65,7 @@ export interface CommercePlatformAdapter {
   syncPrice(id: string, price: number): Promise<void>;
   getOrders(filters: OrderFilters): Promise<OrderDTO[]>;
   getOrderById(id: string): Promise<OrderDTO>;
+  checkHealth(): Promise<HealthCheckResult>;
 }
 
 

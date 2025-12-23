@@ -30,6 +30,9 @@ router.get('/admin/lojavirtual', authMiddleware, (req, res) =>
 router.get('/admin/lojavirtual/:lojavirtual_id', authMiddleware, (req, res) =>
   lojaController.getLoja(req, res)
 );
+router.get('/admin/lojavirtual/:lojavirtual_id/health', authMiddleware, (req, res) =>
+  lojaController.checkHealth(req, res)
+);
 
 const productController = new ProductController();
 router.get('/admin/lojavirtual/:lojavirtual_id/produtos', authMiddleware, (req, res) =>
