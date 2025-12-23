@@ -58,17 +58,19 @@
         }
       },
       "migration:run": {
-        "executor": "@nx/run-commands:run-commands",
+        "executor": "@nx/js:node",
         "options": {
-          "command": "tsx apps/api/src/scripts/runMigrations.ts",
-          "cwd": "{workspaceRoot}"
+          "buildTarget": "api:build",
+          "runtimeArgs": ["-r", "tsx/cjs"],
+          "args": ["apps/api/src/scripts/runMigrations.ts"]
         }
       },
       "migration:revert": {
-        "executor": "@nx/run-commands:run-commands",
+        "executor": "@nx/js:node",
         "options": {
-          "command": "tsx apps/api/src/scripts/revertMigrations.ts",
-          "cwd": "{workspaceRoot}"
+          "buildTarget": "api:build",
+          "runtimeArgs": ["-r", "tsx/cjs"],
+          "args": ["apps/api/src/scripts/revertMigrations.ts"]
         }
       }
     },

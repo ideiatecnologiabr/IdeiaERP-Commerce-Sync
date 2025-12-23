@@ -3,6 +3,8 @@ import { logger } from '../../../../config/logger';
 import { ProductQueryService } from '../../services/ProductQueryService';
 import { AdapterFactory, PlatformType } from '../../../integrations/AdapterFactory';
 import { PlatformConfig } from '../../../integrations/ports/PlatformConfig';
+import { TokenManager } from '../../../integrations/services/TokenManager';
+import { OpenCartAuthAdapter } from '../../../integrations/opencart/OpenCartAuthAdapter';
 
 export class SyncCatalogCommandHandler {
   async handle(command: SyncCatalogCommand): Promise<void> {
@@ -76,11 +78,20 @@ export class SyncCatalogCommandHandler {
       const platform = this.getPlatformType(loja.plataforma_nome);
       const platformConfig: PlatformConfig = {
         baseUrl: loja.urlbase,
-        apiKey: loja.apikey,
+        apiKey: loja.apikey || undefined,
         apiUser: loja.apiuser || undefined,
+        username: loja.apiuser || undefined,
+        password: loja.apikey || undefined,
+        loginEndpoint: 'api_ocft/admin/auth/login',
       };
 
-      const adapter = AdapterFactory.create(platform, platformConfig);
+      // Create token manager and auth adapter
+      const tokenManager = new TokenManager();
+      const authAdapter = platform === 'opencart' 
+        ? new OpenCartAuthAdapter(platformConfig)
+        : null;
+
+      const adapter = AdapterFactory.create(platform, platformConfig, tokenManager, command.lojavirtual_id);
 
       logger.debug('Adapter created', {
         platform,

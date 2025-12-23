@@ -12,6 +12,23 @@ import { ApiService } from '../../core/api/api.service';
         <div *ngFor="let loja of lojas" class="loja-card">
           <h3>{{ loja.nome }}</h3>
           <p>URL: {{ loja.urlbase || 'N/A' }}</p>
+          <div class="health-status">
+            <div *ngIf="getHealthStatus(loja.lojavirtual_id).checking" class="status checking">
+              <span class="status-indicator checking"></span>
+              Verificando...
+            </div>
+            <div *ngIf="!getHealthStatus(loja.lojavirtual_id).checking && getHealthStatus(loja.lojavirtual_id).online" class="status online">
+              <span class="status-indicator online"></span>
+              Online
+            </div>
+            <div *ngIf="!getHealthStatus(loja.lojavirtual_id).checking && !getHealthStatus(loja.lojavirtual_id).online" class="status offline">
+              <span class="status-indicator offline"></span>
+              Offline
+              <span *ngIf="getHealthStatus(loja.lojavirtual_id).error" class="error-message">
+                {{ getHealthStatus(loja.lojavirtual_id).error }}
+              </span>
+            </div>
+          </div>
           <div class="actions">
             <button (click)="viewProducts(loja.lojavirtual_id)">Produtos</button>
             <button (click)="viewOrders(loja.lojavirtual_id)">Pedidos</button>
@@ -38,6 +55,59 @@ import { ApiService } from '../../core/api/api.service';
         border-radius: 8px;
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       }
+      .health-status {
+        margin: 1rem 0;
+        padding: 0.75rem;
+        border-radius: 4px;
+        background-color: #f5f5f5;
+      }
+      .status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-weight: 500;
+      }
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .status-indicator.online {
+        background-color: #4caf50;
+        box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+      }
+      .status-indicator.offline {
+        background-color: #f44336;
+        box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);
+      }
+      .status-indicator.checking {
+        background-color: #ff9800;
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+      .status.online {
+        color: #4caf50;
+      }
+      .status.offline {
+        color: #f44336;
+      }
+      .status.checking {
+        color: #ff9800;
+      }
+      .error-message {
+        font-size: 0.875rem;
+        color: #666;
+        margin-left: 0.5rem;
+        font-style: italic;
+      }
       .actions {
         display: flex;
         gap: 0.5rem;
@@ -52,12 +122,16 @@ import { ApiService } from '../../core/api/api.service';
         cursor: pointer;
         flex: 1;
       }
+      .actions button:hover {
+        background-color: #1565c0;
+      }
     `,
   ],
 })
 export class LojasVirtuaisComponent implements OnInit {
   lojas: any[] = [];
   loading = false;
+  healthStatus: Map<string, { online: boolean; checking: boolean; error?: string }> = new Map();
 
   constructor(private api: ApiService, private router: Router) {}
 
@@ -71,6 +145,10 @@ export class LojasVirtuaisComponent implements OnInit {
       next: (response) => {
         if (response.success && response.data) {
           this.lojas = response.data.data || [];
+          // Check health for each loja after loading
+          this.lojas.forEach((loja) => {
+            this.checkHealth(loja.lojavirtual_id);
+          });
         }
         this.loading = false;
       },
@@ -80,15 +158,51 @@ export class LojasVirtuaisComponent implements OnInit {
     });
   }
 
-  viewProducts(lojavirtual_id: number): void {
+  checkHealth(lojavirtual_id: string): void {
+    // Set checking status
+    this.healthStatus.set(lojavirtual_id, { online: false, checking: true });
+
+    this.api.get<{ online: boolean; error?: string; timestamp: string }>(
+      `/admin/lojavirtual/${lojavirtual_id}/health`
+    ).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.healthStatus.set(lojavirtual_id, {
+            online: response.data.online,
+            checking: false,
+            error: response.data.error,
+          });
+        } else {
+          this.healthStatus.set(lojavirtual_id, {
+            online: false,
+            checking: false,
+            error: 'Erro ao verificar status',
+          });
+        }
+      },
+      error: (err) => {
+        this.healthStatus.set(lojavirtual_id, {
+          online: false,
+          checking: false,
+          error: err.error?.error?.message || 'Erro de conexão',
+        });
+      },
+    });
+  }
+
+  getHealthStatus(lojavirtual_id: string): { online: boolean; checking: boolean; error?: string } {
+    return this.healthStatus.get(lojavirtual_id) || { online: false, checking: false };
+  }
+
+  viewProducts(lojavirtual_id: string): void {
     this.router.navigate(['/lojas-virtuais', lojavirtual_id, 'produtos']);
   }
 
-  viewOrders(lojavirtual_id: number): void {
+  viewOrders(lojavirtual_id: string): void {
     this.router.navigate(['/lojas-virtuais', lojavirtual_id, 'pedidos']);
   }
 
-  syncCatalog(lojavirtual_id: number): void {
+  syncCatalog(lojavirtual_id: string): void {
     this.api.post(`/admin/lojavirtual/${lojavirtual_id}/sync/catalog`, {}).subscribe({
       next: (response) => {
         if (response.success) {
