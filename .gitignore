@@ -38,6 +38,7 @@ yarn-error.log
 # Build outputs
 *.exe
 *.bin
+ideiaerp-sync-macos
 dist/
 
 # PM2

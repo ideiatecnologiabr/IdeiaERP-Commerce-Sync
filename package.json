@@ -7,9 +7,10 @@
     "build": "npx nx run-many --target=build --all",
     "build:api": "npx nx build api",
     "build:web": "npx nx build web",
-    "build:api:win": "npx nx build api && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',dependencies:rootPkg.dependencies};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg src/main.js --targets node18-win-x64 --output ../../ideiaerp-sync-win.exe",
-    "build:api:linux": "npx nx build api && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',dependencies:rootPkg.dependencies};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg src/main.js --targets node18-linux-x64 --output ../../ideiaerp-sync-linux",
-    "build:api:macos": "npx nx build api && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',bin:{'ideiaerp-sync':'./src/main.js'},dependencies:rootPkg.dependencies};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg package.json --targets node18-macos-x64 --output ../../../ideiaerp-sync-macos",
+    "swagger:generate": "tsx apps/api/src/scripts/generateSwaggerSpec.ts",
+    "build:api:win": "npm run swagger:generate && npx nx build api && cp apps/api/pkg.json dist/apps/api/ && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',dependencies:rootPkg.dependencies,overrides:{'ansis':'3.3.2'}};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg pkg.json --targets node18-win-x64 --output ../../../ideiaerp-sync-win.exe",
+    "build:api:linux": "npm run swagger:generate && npx nx build api && cp apps/api/pkg.json dist/apps/api/ && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',dependencies:rootPkg.dependencies,overrides:{'ansis':'3.3.2'}};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg pkg.json --targets node18-linux-x64 --output ../../../ideiaerp-sync-linux",
+    "build:api:macos": "npm run swagger:generate && npx nx build api && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',bin:{'ideiaerp-sync':'./src/main.js'},dependencies:rootPkg.dependencies,overrides:{'ansis':'3.3.2'}};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx pkg src/main.js --targets node18-macos-x64 --output ../../../ideiaerp-sync-macos",
     "build:api:macos:nexe": "npx nx build api && cd dist/apps/api && node -e \"const fs=require('fs');const rootPkg=require('../../../package.json');const newPkg={name:'api',version:'0.0.1',main:'./src/main.js',type:'commonjs',dependencies:rootPkg.dependencies};fs.writeFileSync('./package.json',JSON.stringify(newPkg,null,2));\" && npm install --production --legacy-peer-deps && npx nexe src/main.js -t macos-x64-18.5.0 -o ../../../ideiaerp-sync-macos",
     "serve": "npx nx run-many --target=serve --all",
     "serve:api": "npx nx serve api",
@@ -34,6 +35,7 @@
     "@angular/platform-browser": "^17.0.0",
     "@angular/platform-browser-dynamic": "^17.0.0",
     "@angular/router": "^17.0.0",
+    "ansis": "3.3.2",
     "compression": "^1.7.4",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -82,5 +84,13 @@
     "ts-node": "^10.9.2",
     "tsx": "^4.7.0",
     "typescript": "~5.4.5"
+  },
+  "overrides": {
+    "ansis": "3.3.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "ansis": "3.3.2"
+    }
   }
 }

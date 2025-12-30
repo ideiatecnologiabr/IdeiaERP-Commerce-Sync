@@ -2,10 +2,33 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import { Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import path from 'path';
+import { existsSync, readFileSync } from 'fs';
 import { getEnv } from './env';
 import { logger } from './logger';
 
 const env = getEnv();
+
+// Detectar se está rodando como executável empacotado (pkg)
+const isPkgExecutable = !!(process as any).pkg;
+
+// Ajustar paths dependendo do ambiente
+const getApiPaths = () => {
+  if (isPkgExecutable) {
+    // Quando empacotado, os arquivos .js estão em /snapshot/api/
+    return [
+      path.join(__dirname, '../modules/**/*.js'),
+      path.join(__dirname, '../webhooks/**/*.js'),
+    ];
+  } else {
+    // Em desenvolvimento, tentar ambos .ts e .js
+    return [
+      path.join(__dirname, '../modules/**/*.ts'),
+      path.join(__dirname, '../webhooks/**/*.ts'),
+      path.join(__dirname, '../modules/**/*.js'),
+      path.join(__dirname, '../webhooks/**/*.js'),
+    ];
+  }
+};
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -126,52 +149,123 @@ const options: swaggerJsdoc.Options = {
       { name: 'Webhooks', description: 'Webhooks públicos' },
     ],
   },
-  apis: [
-    path.join(__dirname, '../modules/**/*.ts'),
-    path.join(__dirname, '../webhooks/**/*.ts'),
-    path.join(__dirname, '../modules/**/*.js'),
-    path.join(__dirname, '../webhooks/**/*.js'),
-  ],
+  apis: getApiPaths(),
 };
 
 let swaggerSpec: any;
 
+// Detectar se está rodando como executável empacotado (pkg)
+const isPkg = !!(process as any).pkg;
+
+// Tentar carregar spec pré-gerado (importado como módulo)
 try {
-  swaggerSpec = swaggerJsdoc(options);
-  logger.info('Swagger documentation loaded successfully');
+  const { preGeneratedSwaggerSpec } = require('./swagger-spec-generated');
+  swaggerSpec = preGeneratedSwaggerSpec;
+  // Atualizar servidor com porta dinâmica
+  if (swaggerSpec.servers && swaggerSpec.servers[0]) {
+    swaggerSpec.servers[0].url = `http://localhost:${env.PORT}`;
+  }
+  const pathCount = Object.keys(swaggerSpec.paths || {}).length;
+  logger.info('Swagger spec loaded from pre-generated module', { 
+    paths: pathCount,
+    source: 'swagger-spec-generated.ts',
+  });
 } catch (error) {
-  logger.error('Error loading Swagger documentation:', error);
-  // Create a minimal spec if loading fails
-  swaggerSpec = {
-    openapi: '3.0.0',
-    info: {
-      title: 'IdeiaERP Commerce Sync API',
-      version: '1.0.0',
-      description: 'API REST para sincronização entre IdeiaERP e lojas virtuais',
-    },
-    servers: [
-      {
-        url: `http://localhost:${env.PORT}`,
-        description: 'Development server',
+  logger.debug('Pre-generated swagger spec not found, generating dynamically', {
+    error: error instanceof Error ? error.message : 'Unknown error'
+  });
+  
+  // Fallback para geração dinâmica (desenvolvimento)
+  try {
+    swaggerSpec = swaggerJsdoc(options);
+    const pathCount = Object.keys(swaggerSpec.paths || {}).length;
+    logger.info('Swagger documentation loaded successfully', { 
+      paths: pathCount,
+      apiFiles: getApiPaths(),
+      mode: 'dynamic',
+    });
+    
+    if (pathCount === 0) {
+      logger.warn('No API paths found in swagger spec. JSDoc comments may be missing.');
+    }
+  } catch (error) {
+    logger.error('Error loading Swagger documentation:', error);
+    // Create a minimal spec if loading fails
+    swaggerSpec = {
+      openapi: '3.0.0',
+      info: {
+        title: 'IdeiaERP Commerce Sync API',
+        version: '1.0.0',
+        description: 'API REST para sincronização entre IdeiaERP e lojas virtuais',
       },
-    ],
-    paths: {},
-  };
+      servers: [
+        {
+          url: `http://localhost:${env.PORT}`,
+          description: 'Development server',
+        },
+      ],
+      paths: {},
+    };
+  }
 }
 
 export { swaggerSpec };
 
 export function setupSwagger(app: Express): void {
   try {
-    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-      customCss: '.swagger-ui .topbar { display: none }',
-      customSiteTitle: 'IdeiaERP Commerce Sync API',
-    }));
-    
+    // Serve Swagger spec as JSON
     app.get('/openapi.json', (req, res) => {
       res.setHeader('Content-Type', 'application/json');
       res.send(swaggerSpec);
     });
+    
+    // Detectar se está rodando como executável empacotado (pkg)
+    const isPkgExecutable = !!(process as any).pkg;
+    
+    if (isPkgExecutable) {
+      // Usar CDN para servir Swagger UI quando empacotado
+      app.get('/docs', (req, res) => {
+        res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IdeiaERP Commerce Sync API</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.0.0/swagger-ui.css">
+  <style>
+    .swagger-ui .topbar { display: none }
+  </style>
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.0.0/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.0.0/swagger-ui-standalone-preset.js"></script>
+  <script>
+    window.onload = function() {
+      SwaggerUIBundle({
+        url: '/openapi.json',
+        dom_id: '#swagger-ui',
+        presets: [
+          SwaggerUIBundle.presets.apis,
+          SwaggerUIStandalonePreset
+        ],
+        layout: "StandaloneLayout"
+      });
+    };
+  </script>
+</body>
+</html>
+        `);
+      });
+    } else {
+      // Usar swagger-ui-express normalmente em desenvolvimento
+      app.use('/docs', swaggerUi.serve);
+      app.get('/docs', swaggerUi.setup(swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'IdeiaERP Commerce Sync API',
+      }));
+    }
     
     logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
   } catch (error) {

@@ -1,13 +1,18 @@
 import 'reflect-metadata';
 import { config } from 'dotenv';
-import { resolve } from 'path';
+import { resolve, dirname } from 'path';
 import { existsSync } from 'fs';
 
 // Carregar .env do diretório de execução (não do diretório de compilação)
 // Quando executado como binário pkg, process.cwd() aponta para o diretório de execução
-const envPath = resolve(process.cwd(), '.env');
-if (existsSync(envPath)) {
-  config({ path: envPath });
+// Mas se chamado de outra pasta, precisamos olhar onde o executável está
+const envPathCwd = resolve(process.cwd(), '.env');
+const envPathExec = resolve(dirname(process.execPath), '.env');
+
+if (existsSync(envPathCwd)) {
+  config({ path: envPathCwd });
+} else if (existsSync(envPathExec)) {
+  config({ path: envPathExec });
 } else {
   // Fallback: tentar carregar do diretório padrão
   config();

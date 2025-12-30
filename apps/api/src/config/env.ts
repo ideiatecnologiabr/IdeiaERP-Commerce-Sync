@@ -5,15 +5,15 @@ const envSchema = z.object({
   ERP_DB_HOST: z.string().default('localhost'),
   ERP_DB_PORT: z.coerce.number().default(3306),
   ERP_DB_USER: z.string().default('root'),
-  ERP_DB_PASSWORD: z.string().default(''),
-  ERP_DB_NAME: z.string(),
+  ERP_DB_PASSWORD: z.string().default('ideia'),
+  ERP_DB_NAME: z.string().default('simplao'),
 
   // App Database
-  APP_DB_HOST: z.string().default('localhost'),
-  APP_DB_PORT: z.coerce.number().default(3306),
-  APP_DB_USER: z.string().default('root'),
-  APP_DB_PASSWORD: z.string().default(''),
-  APP_DB_NAME: z.string(),
+  APP_DB_HOST: z.string().default('localhost'), 
+  APP_DB_PORT: z.coerce.number().default(3307),
+  APP_DB_USER: z.string().default('ideiaerp_user'),
+  APP_DB_PASSWORD: z.string().default('ideiaerp_password'),
+  APP_DB_NAME: z.string().default('ideiaerp_sync'),
 
   // OpenCart
   OPENCART_URL: z.string().url().optional(),

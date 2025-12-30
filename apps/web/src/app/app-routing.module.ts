@@ -41,12 +41,12 @@ const routes: Routes = [
       import('./features/orders/orders.module').then((m) => m.OrdersModule),
     canActivate: [AuthGuard],
   },
-  {
-    path: 'logs',
-    loadChildren: () =>
-      import('./features/logs/logs.module').then((m) => m.LogsModule),
-    canActivate: [AuthGuard],
-  },
+  // {
+  //   path: 'logs',
+  //   loadChildren: () =>
+  //     import('./features/logs/logs.module').then((m) => m.LogsModule),
+  //   canActivate: [AuthGuard],
+  // },
 ];
 
 @NgModule({
