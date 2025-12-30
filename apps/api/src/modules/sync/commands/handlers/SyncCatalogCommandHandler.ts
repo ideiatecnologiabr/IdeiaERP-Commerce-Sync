@@ -1,10 +1,8 @@
 import { SyncCatalogCommand } from '../SyncCatalogCommand';
 import { logger } from '../../../../config/logger';
 import { ProductQueryService } from '../../services/ProductQueryService';
-import { AdapterFactory, PlatformType } from '../../../integrations/AdapterFactory';
-import { PlatformConfig } from '../../../integrations/ports/PlatformConfig';
-import { TokenManager } from '../../../integrations/services/TokenManager';
-import { OpenCartAuthAdapter } from '../../../integrations/opencart/OpenCartAuthAdapter';
+import { AdapterFactory } from '../../../integrations/AdapterFactory';
+import { ProductDTO } from '../../../integrations/ports/CommercePlatformAdapter';
 
 export class SyncCatalogCommandHandler {
   async handle(command: SyncCatalogCommand): Promise<void> {
@@ -61,50 +59,60 @@ export class SyncCatalogCommandHandler {
         productCount: products.length,
       });
 
-      // Log sample of products for debugging
-      if (products.length > 0) {
-        logger.debug('Sample products', {
-          firstProduct: {
-            produto_id: products[0].produto.produto_id,
-            nome: products[0].produto.nome,
-            codigo: products[0].produto.codigo,
-            preco: products[0].preco,
-            estoque: products[0].estoque,
-          },
-        });
-      }
 
       // 5. Create adapter with platform configuration
-      const platform = this.getPlatformType(loja.plataforma_nome);
-      const platformConfig: PlatformConfig = {
-        baseUrl: loja.urlbase,
-        apiKey: loja.apikey || undefined,
-        apiUser: loja.apiuser || undefined,
-        username: loja.apiuser || undefined,
-        password: loja.apikey || undefined,
-        loginEndpoint: 'api_ocft/admin/auth/login',
-      };
-
-      // Create token manager and auth adapter
-      const tokenManager = new TokenManager();
-      const authAdapter = platform === 'opencart' 
-        ? new OpenCartAuthAdapter(platformConfig)
-        : null;
-
-      const adapter = AdapterFactory.create(platform, platformConfig, tokenManager, command.lojavirtual_id);
+      const adapter = AdapterFactory.createFromLoja(loja);
 
       logger.debug('Adapter created', {
-        platform,
+        platform: loja.plataforma_nome,
         baseUrl: loja.urlbase,
       });
 
-      // TODO: Steps 6-7 will be implemented later
-      // 6. Sync via adapter (create/update)
-      // 7. Update integracao_id via sync_mapping
 
-      logger.info(`Catalog sync completed for loja ${command.lojavirtual_id}`, {
-        productsProcessed: products.length,
+      // 6. Sync products via adapter
+      let successCount = 0;
+      let errorCount = 0;
+
+      logger.info('Starting product sync', { total: products.length });
+
+      for (const productData of products) {
+        try {
+          const productDTO: ProductDTO = {
+            nome: productData.produto.nome || 'Sem nome',
+            descricao: productData.produto.descricaodetalhada_web || productData.produto.descricaoresumida_web || undefined,
+            codigo: productData.produto.codigo || undefined,
+            preco: productData.preco,
+            estoque: productData.estoque,
+            categoria: productData.produto.categoria?.nome || undefined,
+            marca: productData.produto.marca?.nome || undefined,
+          };
+
+          // This already saves to SyncMapping (local app DB)
+          const platformId = await adapter.createProduct(productDTO);
+          
+          successCount++;
+          logger.debug('Product synced successfully', {
+            produto_id: productData.produto.produto_id,
+            codigo: productData.produto.codigo,
+            platform_id: platformId,
+          });
+        } catch (error: any) {
+          errorCount++;
+          logger.error('Error syncing product', {
+            produto_id: productData.produto.produto_id,
+            codigo: productData.produto.codigo,
+            error: error.message,
+          });
+        }
+      }
+
+      logger.info('Catalog sync completed', {
+        lojavirtual_id: command.lojavirtual_id,
+        total: products.length,
+        success: successCount,
+        errors: errorCount,
       });
+
     } catch (error: any) {
       logger.error('Error during catalog sync', {
         lojavirtual_id: command.lojavirtual_id,
@@ -113,25 +121,6 @@ export class SyncCatalogCommandHandler {
       });
       throw error;
     }
-  }
-
-  /**
-   * Get normalized platform type from plataforma_nome
-   */
-  private getPlatformType(plataforma_nome: string): PlatformType {
-    const normalized = plataforma_nome.toLowerCase().trim();
-    
-    if (normalized.includes('opencart') || normalized.includes('open-cart')) {
-      return 'opencart';
-    }
-    
-    if (normalized.includes('vtex')) {
-      return 'vtex';
-    }
-
-    // Default to opencart
-    logger.warn(`Platform name "${plataforma_nome}" not recognized, defaulting to opencart`);
-    return 'opencart';
   }
 }
 

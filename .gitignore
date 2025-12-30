@@ -44,10 +44,12 @@ dist/
 .pm2/
 
 # Logs
-logs
+/logs
 *.log
 
 # OS
 .DS_Store
 Thumbs.db
 
+
+.angular/

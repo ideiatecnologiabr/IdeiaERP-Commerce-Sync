@@ -39,11 +39,40 @@ const appDbConfig: DataSourceOptions = {
   subscribers: [],
 };
 
+import { createConnection } from 'mysql2/promise';
+
 export const erpDataSource = new DataSource(erpDbConfig);
 export const appDataSource = new DataSource(appDbConfig);
 
+async function ensureDatabaseExists(config: DataSourceOptions) {
+  const { host, port, username, password, database } = config as any;
+  
+  try {
+    const connection = await createConnection({
+      host,
+      port,
+      user: username,
+      password,
+    });
+
+    await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
+    await connection.end();
+    
+    logger.debug(`Database ${database} verified/created successfully`);
+  } catch (error) {
+    logger.error(`Error checking/creating database ${database}:`, error);
+    // Don't throw here, let TypeORM fail if it truly can't connect, 
+    // or arguably we SHOULD throw if we can't even connect to the server.
+    // However, if the error is just access denied to create DB, maybe the DB exists?
+    // Let's log and proceed, TypeORM will be the final judge.
+  }
+}
+
 export async function initializeDatabases(): Promise<void> {
   try {
+    // Ensure ERP Database exists
+    await ensureDatabaseExists(erpDbConfig);
+
     // Debug: Log loaded entities
     const erpEntityNames = Object.values(erpEntities).map((e: any) => e.name || 'Unknown');
     logger.debug('Loading ERP entities', { 
@@ -77,6 +106,9 @@ export async function initializeDatabases(): Promise<void> {
   }
 
   try {
+    // Ensure App Database exists
+    await ensureDatabaseExists(appDbConfig);
+
     // Debug: Log loaded entities
     const appEntityNames = Object.values(appEntities).map((e: any) => e.name || 'Unknown');
     logger.debug('Loading App entities', { 
