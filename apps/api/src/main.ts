@@ -63,8 +63,9 @@ async function bootstrap() {
         process.exit(0);
       });
     });
-  } catch (error) {
-    logger.error('Failed to start server:', error);
+  } catch (error: any) {
+    // Don't log stack trace here - friendly error message was already shown
+    console.error('\n❌ Falha ao iniciar o servidor. Corrija os erros acima e tente novamente.\n');
     process.exit(1);
   }
 }

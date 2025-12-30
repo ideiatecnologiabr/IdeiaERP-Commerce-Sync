@@ -13,6 +13,41 @@ const env = getEnv();
 const lockService = new SyncLockService();
 const logService = new SyncLogService();
 
+/**
+ * Checks if error is a database connection error
+ */
+function isDatabaseConnectionError(error: any): boolean {
+  const errorCode = error.code || error.errno;
+  const errorMessage = error.message || '';
+  
+  return (
+    errorCode === 'ETIMEDOUT' ||
+    errorCode === 'ECONNREFUSED' ||
+    errorCode === 'ENOTFOUND' ||
+    errorCode === 'ER_ACCESS_DENIED_ERROR' ||
+    errorMessage.includes('ETIMEDOUT') ||
+    errorMessage.includes('Connection lost') ||
+    errorMessage.includes('connect ECONNREFUSED')
+  );
+}
+
+/**
+ * Formats database error for logging
+ */
+function formatCronDatabaseError(error: any, tipo: string): string {
+  const errorCode = error.code || error.errno;
+  
+  if (errorCode === 'ETIMEDOUT' || error.message?.includes('ETIMEDOUT')) {
+    return `⚠️  [SYNC ${tipo.toUpperCase()}] Banco de dados não respondeu (timeout). Verifique se o servidor está rodando.`;
+  }
+  
+  if (errorCode === 'ECONNREFUSED') {
+    return `⚠️  [SYNC ${tipo.toUpperCase()}] Não foi possível conectar ao banco de dados. Servidor pode estar desligado.`;
+  }
+  
+  return `⚠️  [SYNC ${tipo.toUpperCase()}] Erro de conexão com banco de dados: ${error.message}`;
+}
+
 // Store cron tasks for manual execution
 const cronTasks: Map<string, cron.ScheduledTask> = new Map();
 
@@ -212,25 +247,48 @@ async function executeSyncForAllLojas(
           });
         } catch (error: any) {
           const lojaDuration = Date.now() - lojaStartTime;
-          logger.error(`[CRON DEBUG] Sync failed for loja ${loja.lojavirtual_id}, tipo ${tipo} after ${lojaDuration}ms`, error);
           
-          // Log error
-          await logService.log({
-            lojavirtual_id: loja.lojavirtual_id,
-            tipo,
-            acao: 'sync',
-            entidade: tipo,
-            status: 'error',
-            mensagem: error.message,
-            detalhes: { stack: error.stack },
-          });
+          // Check if it's a database connection error
+          if (isDatabaseConnectionError(error)) {
+            const friendlyMessage = formatCronDatabaseError(error, tipo);
+            console.error(friendlyMessage);
+            logger.error(friendlyMessage);
+          } else {
+            logger.error(`[CRON DEBUG] Sync failed for loja ${loja.lojavirtual_id}, tipo ${tipo} after ${lojaDuration}ms`, error);
+          }
+          
+          // Try to log error (might fail if DB is down)
+          try {
+            await logService.log({
+              lojavirtual_id: loja.lojavirtual_id,
+              tipo,
+              acao: 'sync',
+              entidade: tipo,
+              status: 'error',
+              mensagem: error.message,
+              detalhes: { stack: error.stack },
+            });
+          } catch (logError) {
+            // If we can't log, just skip it
+            logger.debug('Could not save error log to database');
+          }
         } finally {
-          // Always release lock
-          logger.debug(`[CRON DEBUG] Releasing lock for loja ${loja.lojavirtual_id}, tipo ${tipo}`);
-          await lockService.releaseLock(loja.lojavirtual_id, tipo);
+          // Always release lock (might fail if DB is down)
+          try {
+            logger.debug(`[CRON DEBUG] Releasing lock for loja ${loja.lojavirtual_id}, tipo ${tipo}`);
+            await lockService.releaseLock(loja.lojavirtual_id, tipo);
+          } catch (lockError) {
+            logger.debug('Could not release lock (database might be down)');
+          }
         }
       } catch (error: any) {
-        logger.error(`[CRON DEBUG] Error processing loja ${loja.lojavirtual_id}`, error);
+        if (isDatabaseConnectionError(error)) {
+          const friendlyMessage = formatCronDatabaseError(error, tipo);
+          console.error(friendlyMessage);
+          logger.error(friendlyMessage);
+        } else {
+          logger.error(`[CRON DEBUG] Error processing loja ${loja.lojavirtual_id}`, error);
+        }
       }
     }
     
@@ -238,8 +296,17 @@ async function executeSyncForAllLojas(
     logger.info(`[CRON DEBUG] Completed sync for tipo: ${tipo} in ${totalDuration}ms`);
   } catch (error: any) {
     const totalDuration = Date.now() - startTime;
-    logger.error(`[CRON DEBUG] Error in CRON job for ${tipo} after ${totalDuration}ms`, error);
-    throw error;
+    
+    // Check if it's a database connection error
+    if (isDatabaseConnectionError(error)) {
+      const friendlyMessage = formatCronDatabaseError(error, tipo);
+      console.error(friendlyMessage);
+      logger.error(friendlyMessage);
+    } else {
+      logger.error(`[CRON DEBUG] Error in CRON job for ${tipo} after ${totalDuration}ms`, error);
+    }
+    
+    // Don't throw - let other cron jobs continue
   }
 }
 

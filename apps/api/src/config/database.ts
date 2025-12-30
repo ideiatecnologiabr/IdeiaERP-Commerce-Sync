@@ -8,6 +8,143 @@ const env = getEnv();
 import * as erpEntities from '../entities/erp';
 import * as appEntities from '../entities/app';
 
+/**
+ * Formats a database connection error into a user-friendly message
+ */
+function formatDatabaseError(error: any, dbName: string, config: any): string {
+  const errorCode = error.code || error.errno;
+  const host = config.host || 'localhost';
+  const port = config.port || 3306;
+
+  // Connection timeout
+  if (errorCode === 'ETIMEDOUT') {
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO DE CONEXÃO: Tempo Limite Excedido                                 ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Não foi possível conectar ao banco de dados "${dbName}".                 ║
+║  O servidor não respondeu no tempo esperado.                               ║
+║                                                                            ║
+║  Servidor: ${host}:${port}                                                ║
+║                                                                            ║
+║  Possíveis causas:                                                         ║
+║  • O servidor de banco de dados está desligado                             ║
+║  • Firewall bloqueando a conexão                                           ║
+║  • Configuração incorreta de host/porta                                    ║
+║  • Problemas de rede                                                       ║
+║                                                                            ║
+║  Soluções:                                                                 ║
+║  1. Verifique se o servidor MariaDB/MySQL está rodando                     ║
+║  2. Confirme o host e porta no arquivo .env                                ║
+║  3. Teste a conexão: telnet ${host} ${port}                                ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+  }
+
+  // Connection refused
+  if (errorCode === 'ECONNREFUSED') {
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO DE CONEXÃO: Conexão Recusada                                      ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  O servidor de banco de dados "${dbName}" recusou a conexão.              ║
+║                                                                            ║
+║  Servidor: ${host}:${port}                                                ║
+║                                                                            ║
+║  Causa provável:                                                           ║
+║  • O servidor MariaDB/MySQL não está rodando                               ║
+║                                                                            ║
+║  Soluções:                                                                 ║
+║  1. Inicie o servidor de banco de dados                                    ║
+║  2. Verifique se a porta ${port} está correta                              ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+  }
+
+  // Host not found
+  if (errorCode === 'ENOTFOUND') {
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO DE CONEXÃO: Servidor Não Encontrado                               ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  O servidor "${host}" não foi encontrado.                                 ║
+║                                                                            ║
+║  Banco: ${dbName}                                                          ║
+║                                                                            ║
+║  Causa provável:                                                           ║
+║  • Endereço de host incorreto no arquivo .env                              ║
+║                                                                            ║
+║  Soluções:                                                                 ║
+║  1. Verifique o valor de ${dbName === 'ERP' ? 'ERP_DB_HOST' : 'APP_DB_HOST'} no arquivo .env  ║
+║  2. Use 'localhost' para servidor local                                    ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+  }
+
+  // Access denied
+  if (errorCode === 'ER_ACCESS_DENIED_ERROR' || error.message?.includes('Access denied')) {
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO DE AUTENTICAÇÃO: Acesso Negado                                    ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Usuário ou senha incorretos para o banco "${dbName}".                    ║
+║                                                                            ║
+║  Servidor: ${host}:${port}                                                ║
+║  Usuário: ${config.username}                                               ║
+║                                                                            ║
+║  Soluções:                                                                 ║
+║  1. Verifique as credenciais no arquivo .env:                              ║
+║     - ${dbName === 'ERP' ? 'ERP_DB_USER' : 'APP_DB_USER'}                 ║
+║     - ${dbName === 'ERP' ? 'ERP_DB_PASSWORD' : 'APP_DB_PASSWORD'}         ║
+║  2. Confirme que o usuário tem permissões no banco de dados                ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+  }
+
+  // Database not found
+  if (errorCode === 'ER_BAD_DB_ERROR' || error.message?.includes('Unknown database')) {
+    return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO: Banco de Dados Não Encontrado                                    ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  O banco de dados "${config.database}" não existe.                        ║
+║                                                                            ║
+║  Servidor: ${host}:${port}                                                ║
+║                                                                            ║
+║  Soluções:                                                                 ║
+║  1. Crie o banco de dados manualmente                                      ║
+║  2. Verifique o nome do banco no arquivo .env                              ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+  }
+
+  // Generic error
+  return `
+╔════════════════════════════════════════════════════════════════════════════╗
+║  ❌ ERRO DE CONEXÃO: ${dbName}                                             ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║  Não foi possível conectar ao banco de dados.                              ║
+║                                                                            ║
+║  Servidor: ${host}:${port}                                                ║
+║  Banco: ${config.database}                                                 ║
+║  Erro: ${error.message || 'Erro desconhecido'}                            ║
+║                                                                            ║
+║  Verifique as configurações no arquivo .env                                ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+`;
+}
 
 // ERP Database Configuration
 const erpDbConfig: DataSourceOptions = {
@@ -22,6 +159,7 @@ const erpDbConfig: DataSourceOptions = {
   entities: Object.values(erpEntities),
   migrations: [],
   subscribers: [],
+  connectTimeout: 10000, // 10 seconds timeout
 };
 
 // App Database Configuration
@@ -37,6 +175,7 @@ const appDbConfig: DataSourceOptions = {
   entities: Object.values(appEntities),
   migrations: [__dirname + '/../migrations/**/*.ts'],
   subscribers: [],
+  connectTimeout: 10000, // 10 seconds timeout
 };
 
 import { createConnection } from 'mysql2/promise';
@@ -44,7 +183,7 @@ import { createConnection } from 'mysql2/promise';
 export const erpDataSource = new DataSource(erpDbConfig);
 export const appDataSource = new DataSource(appDbConfig);
 
-async function ensureDatabaseExists(config: DataSourceOptions) {
+async function ensureDatabaseExists(config: DataSourceOptions, dbName: string) {
   const { host, port, username, password, database } = config as any;
   
   try {
@@ -53,25 +192,31 @@ async function ensureDatabaseExists(config: DataSourceOptions) {
       port,
       user: username,
       password,
+      connectTimeout: 10000,
     });
 
     await connection.query(`CREATE DATABASE IF NOT EXISTS \`${database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;`);
     await connection.end();
     
     logger.debug(`Database ${database} verified/created successfully`);
-  } catch (error) {
-    logger.error(`Error checking/creating database ${database}:`, error);
-    // Don't throw here, let TypeORM fail if it truly can't connect, 
-    // or arguably we SHOULD throw if we can't even connect to the server.
-    // However, if the error is just access denied to create DB, maybe the DB exists?
-    // Let's log and proceed, TypeORM will be the final judge.
+  } catch (error: any) {
+    // Se o erro for de conexão (timeout, refused, etc), apenas re-lançar
+    // A mensagem amigável será mostrada em initializeDatabases
+    const errorCode = error.code || error.errno;
+    if (['ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND'].includes(errorCode)) {
+      throw error;
+    }
+    
+    // Para outros erros (ex: sem permissão para criar DB), só logar
+    logger.warn(`Could not verify/create database ${database}. Database might already exist.`, error.message);
+    // Don't throw here - the database might exist, TypeORM will verify
   }
 }
 
 export async function initializeDatabases(): Promise<void> {
   try {
     // Ensure ERP Database exists
-    await ensureDatabaseExists(erpDbConfig);
+    await ensureDatabaseExists(erpDbConfig, 'ERP');
 
     // Debug: Log loaded entities
     const erpEntityNames = Object.values(erpEntities).map((e: any) => e.name || 'Unknown');
@@ -89,25 +234,21 @@ export async function initializeDatabases(): Promise<void> {
       entities: registeredEntities 
     });
     
-    logger.info('ERP Database connected successfully', {
+    logger.info('✅ ERP Database connected successfully', {
       host: env.ERP_DB_HOST,
       port: env.ERP_DB_PORT,
       database: env.ERP_DB_NAME,
     });
-  } catch (error) {
-    logger.error('Error connecting to ERP Database:', error);
-    logger.error('ERP DB Config:', {
-      host: env.ERP_DB_HOST,
-      port: env.ERP_DB_PORT,
-      database: env.ERP_DB_NAME,
-      user: env.ERP_DB_USER,
-    });
+  } catch (error: any) {
+    const friendlyMessage = formatDatabaseError(error, 'ERP', erpDbConfig);
+    console.error(friendlyMessage);
+    // logger.error('Error connecting to ERP Database', { error: error.message });
     throw error;
   }
 
   try {
     // Ensure App Database exists
-    await ensureDatabaseExists(appDbConfig);
+    await ensureDatabaseExists(appDbConfig, 'APP');
 
     // Debug: Log loaded entities
     const appEntityNames = Object.values(appEntities).map((e: any) => e.name || 'Unknown');
@@ -125,20 +266,15 @@ export async function initializeDatabases(): Promise<void> {
       entities: registeredAppEntities 
     });
     
-    logger.info('App Database connected successfully', {
+    logger.info('✅ App Database connected successfully', {
       host: env.APP_DB_HOST,
       port: env.APP_DB_PORT,
       database: env.APP_DB_NAME,
     });
-  } catch (error) {
-    logger.error('Error connecting to App Database:', error);
-    logger.error('App DB Config:', {
-      host: env.APP_DB_HOST,
-      port: env.APP_DB_PORT,
-      database: env.APP_DB_NAME,
-      user: env.APP_DB_USER,
-    });
-    logger.error('Make sure the Docker container is running: docker-compose up -d');
+  } catch (error: any) {
+    const friendlyMessage = formatDatabaseError(error, 'APP', appDbConfig);
+    console.error(friendlyMessage);
+    // logger.error('Error connecting to App Database', { error: error.message });
     throw error;
   }
 }
@@ -159,4 +295,6 @@ export async function closeDatabases(): Promise<void> {
     throw error;
   }
 }
+
+
 
