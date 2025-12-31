@@ -39,6 +39,8 @@ yarn-error.log
 *.exe
 *.bin
 ideiaerp-sync-macos
+ideiaerp-sync-linux
+ideiaerp-sync-win.exe
 dist/
 
 # PM2
