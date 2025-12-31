@@ -5,7 +5,7 @@ export class SyncLog {
   @PrimaryGeneratedColumn({ name: 'sync_log_id' })
   sync_log_id: number;
 
-  @Column({ name: 'lojavirtual_id', type: 'int' })
+  @Column({ name: 'lojavirtual_id', type: 'varchar', length: 36 })
   lojavirtual_id: string;
 
   // Note: LojaVirtual is in ERP database, so we can't use TypeORM relations

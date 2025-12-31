@@ -1,10 +1,10 @@
 {
   "pkg": {
     "scripts": [
-      "dist/apps/api/**/*.js"
+      "src/**/*.js"
     ],
     "assets": [
-      "package.json",
+      "src/web/**/*",
       "src/swagger-spec.json"
     ],
     "targets": [

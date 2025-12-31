@@ -1,0 +1,22 @@
+{
+  "/api": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "logLevel": "debug",
+    "changeOrigin": true
+  },
+  "/webhooks": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "logLevel": "debug"
+  },
+  "/health": {
+    "target": "http://localhost:3000",
+    "secure": false
+  },
+  "/api-docs": {
+    "target": "http://localhost:3000",
+    "secure": false
+  }
+}
+

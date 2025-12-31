@@ -36,7 +36,9 @@ export const logger = winston.createLogger({
   ],
 });
 
-if (env.NODE_ENV !== 'production') {
+// Adicionar console transport em development OU quando for executável pkg
+// (executáveis precisam de feedback visual no terminal)
+if (env.NODE_ENV !== 'production' || isPkgExecutable) {
   logger.add(
     new winston.transports.Console({
       format: consoleFormat,

@@ -1,5 +1,5 @@
 // Auto-generated file - DO NOT EDIT
-// Generated at: 2025-12-30T15:28:47.677Z
+// Generated at: 2025-12-31T18:17:57.807Z
 
 export const preGeneratedSwaggerSpec = {
   "openapi": "3.0.0",
@@ -578,6 +578,296 @@ export const preGeneratedSwaggerSpec = {
         "responses": {
           "200": {
             "description": "Produto sincronizado com sucesso"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Lista todas as configurações",
+        "description": "Retorna todas as configurações do sistema. Senhas são mascaradas.",
+        "responses": {
+          "200": {
+            "description": "Lista de configurações",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Setting"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Cria uma nova configuração",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "key",
+                  "value"
+                ],
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "example": "ERP_DB_HOST"
+                  },
+                  "value": {
+                    "type": "string",
+                    "example": "localhost"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuração criada"
+          },
+          "400": {
+            "description": "Dados inválidos"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings/{key}": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Busca uma configuração por chave",
+        "description": "Retorna uma configuração específica. Senha é mascarada.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Chave da configuração"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuração encontrada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Setting"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Configuração não encontrada"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Atualiza uma configuração existente",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "value"
+                ],
+                "properties": {
+                  "value": {
+                    "type": "string",
+                    "example": "localhost"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Configuração atualizada"
+          },
+          "400": {
+            "description": "Dados inválidos"
+          },
+          "404": {
+            "description": "Configuração não encontrada"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Remove uma configuração",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuração removida"
+          },
+          "404": {
+            "description": "Configuração não encontrada"
+          },
+          "500": {
+            "description": "Erro interno"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings/erp/test-connection": {
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Testa a conexão com o ERP-DB",
+        "responses": {
+          "200": {
+            "description": "Conexão bem-sucedida"
+          },
+          "503": {
+            "description": "Não foi possível conectar"
+          }
+        }
+      }
+    },
+    "/api/v1/admin/settings/erp/connection-status": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Obtém o status da conexão com o ERP-DB",
+        "description": "Retorna informações sobre a conexão atual e estatísticas do pool",
+        "responses": {
+          "200": {
+            "description": "Status da conexão",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "connected": {
+                          "type": "boolean",
+                          "description": "Se está conectado ao ERP-DB"
+                        },
+                        "pool": {
+                          "type": "object",
+                          "nullable": true,
+                          "properties": {
+                            "total": {
+                              "type": "number",
+                              "description": "Total de conexões no pool"
+                            },
+                            "active": {
+                              "type": "number",
+                              "description": "Conexões ativas (em uso)"
+                            },
+                            "idle": {
+                              "type": "number",
+                              "description": "Conexões ociosas"
+                            },
+                            "waiting": {
+                              "type": "number",
+                              "description": "Clientes aguardando conexão"
+                            }
+                          }
+                        },
+                        "health": {
+                          "type": "object",
+                          "properties": {
+                            "lastCheck": {
+                              "type": "string",
+                              "format": "date-time",
+                              "description": "Data da última verificação"
+                            },
+                            "warnings": {
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

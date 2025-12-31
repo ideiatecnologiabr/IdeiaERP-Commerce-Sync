@@ -7,6 +7,7 @@ import { ProductController } from './products/ProductController';
 import { OrderController } from './orders/OrderController';
 import { SyncController } from './sync/SyncController';
 import { LogController } from './sync/LogController';
+import { SettingsController } from './settings/SettingsController';
 
 const router = Router();
 
@@ -73,6 +74,30 @@ router.get('/admin/cron/status', authMiddleware, (req, res) =>
 );
 router.post('/admin/cron/execute/:tipo', authMiddleware, (req, res) =>
   syncController.executeCron(req, res)
+);
+
+// Settings routes (public - no auth required)
+const settingsController = new SettingsController();
+router.get('/admin/settings', (req, res) =>
+  settingsController.getAll(req, res)
+);
+router.get('/admin/settings/:key', (req, res) =>
+  settingsController.getByKey(req, res)
+);
+router.post('/admin/settings', (req, res) =>
+  settingsController.create(req, res)
+);
+router.put('/admin/settings/:key', (req, res) =>
+  settingsController.update(req, res)
+);
+router.delete('/admin/settings/:key', (req, res) =>
+  settingsController.delete(req, res)
+);
+router.post('/admin/settings/erp/test-connection', (req, res) =>
+  settingsController.testConnection(req, res)
+);
+router.get('/admin/settings/erp/connection-status', (req, res) =>
+  settingsController.getConnectionStatus(req, res)
 );
 
 export default router;

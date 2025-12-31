@@ -1,9 +1,13 @@
 import { ListLojasVirtuaisQuery } from '../ListLojasVirtuaisQuery';
-import { erpDataSource } from '../../../../config/database';
+import { erpConnectionProvider } from '../../../settings/services/ErpDbConnectionProvider';
 import { LojaVirtual } from '../../../../entities/erp';
 
 export class ListLojasVirtuaisQueryHandler {
   async handle(query: ListLojasVirtuaisQuery) {
+    // Ensure ERP-DB connection
+    await erpConnectionProvider.ensureConnection();
+    const erpDataSource = erpConnectionProvider.getDataSource();
+    
     const repository = erpDataSource.getRepository(LojaVirtual);
     
     const qb = repository.createQueryBuilder('lv');

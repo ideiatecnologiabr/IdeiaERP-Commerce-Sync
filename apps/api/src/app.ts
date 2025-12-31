@@ -5,18 +5,40 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import session from 'express-session';
 import rateLimit from 'express-rate-limit';
+import { join } from 'path';
+import { existsSync } from 'fs';
 import { getEnv } from './config/env';
 import { logger } from './config/logger';
 import { setupSwagger } from './config/swagger';
+import { SettingsService } from './modules/settings/services/SettingsService';
 
 const env = getEnv();
 
-export function createApp(): Express {
+export async function createApp(): Promise<Express> {
   const app = express();
+
+  // Detectar se está rodando localmente
+  const isLocalhost = env.APP_DB_HOST === 'localhost' || env.APP_DB_HOST === '127.0.0.1';
 
   // Security middleware
   app.use(helmet({
-    contentSecurityPolicy: env.NODE_ENV === 'production' ? undefined : false,
+    contentSecurityPolicy: env.NODE_ENV === 'production' && !isLocalhost ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'", "https:", "data:"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'self'"],
+      },
+    } : false,
+    hsts: env.NODE_ENV === 'production' && !isLocalhost ? {
+      maxAge: 31536000,
+      includeSubDomains: true,
+    } : false,
   }));
   app.use(cors({
     origin: env.NODE_ENV === 'production' ? false : true,
@@ -31,10 +53,14 @@ export function createApp(): Express {
   // Compression
   app.use(compression());
 
+  // Get SESSION_SECRET from database
+  const settingsService = new SettingsService();
+  const sessionSecret = await settingsService.getSessionSecret();
+
   // Session
   app.use(
     session({
-      secret: env.SESSION_SECRET,
+      secret: sessionSecret,
       resave: false,
       saveUninitialized: false,
       cookie: {
@@ -52,6 +78,15 @@ export function createApp(): Express {
     message: 'Too many requests from this IP, please try again later.',
   });
   app.use('/api/', limiter);
+
+  // Request logging (deve vir antes das rotas)
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    logger.debug(`${req.method} ${req.path}`, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+    next();
+  });
 
   // Health check
   app.get('/health', (req: Request, res: Response) => {
@@ -73,16 +108,40 @@ export function createApp(): Express {
   const apiRoutes = require('./modules/api.routes').default;
   app.use('/api/v1', apiRoutes);
 
-  // Request logging
-  app.use((req: Request, res: Response, next: NextFunction) => {
-    logger.debug(`${req.method} ${req.path}`, {
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-    });
-    next();
-  });
+  // Serve Angular SPA (apenas em produção)
+  if (env.NODE_ENV === 'production') {
+    // Detectar se está rodando como executável empacotado (pkg)
+    const isPkgExecutable = !!(process as any).pkg;
+    
+    // Ajustar path dependendo do ambiente
+    const angularDistPath = isPkgExecutable
+      ? '/snapshot/api/src/web' // No pkg: assets ficam em /snapshot/api/src/web
+      : join(__dirname, '../web');   // No dist normal: dist/apps/api/src -> dist/apps/api/src/web
+    
+    if (existsSync(angularDistPath)) {
+      // Serve arquivos estáticos do Angular
+      app.use('/app', express.static(angularDistPath));
+      
+      // Fallback para index.html (para rotas do Angular)
+      app.get('/app/*', (req: Request, res: Response) => {
+        res.sendFile(join(angularDistPath, 'index.html'));
+      });
+      
+      logger.info('Angular frontend available at /app');
+    } else {
+      logger.warn('Angular dist not found. Build frontend with: pnpm run build:web');
+    }
+  } else {
+    logger.info('Development mode: Angular should be served by Angular CLI on port 4200');
+  }
 
-  // Error handler
+  // Import error handlers
+  const { erpErrorHandler } = require('./shared/http/erpErrorHandler');
+
+  // ERP Database error handler (must come first)
+  app.use(erpErrorHandler);
+
+  // General error handler
   app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     logger.error('Unhandled error:', err);
     res.status(500).json({

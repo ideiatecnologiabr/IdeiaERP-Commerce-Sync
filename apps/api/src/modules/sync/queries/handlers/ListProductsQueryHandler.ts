@@ -1,5 +1,5 @@
 import { ListProductsQuery } from '../ListProductsQuery';
-import { erpDataSource } from '../../../../config/database';
+import { erpConnectionProvider } from '../../../settings/services/ErpDbConnectionProvider';
 import { Produtos, LojaVirtual, ProdutoCaracteristicaProduto } from '../../../../entities/erp';
 import { logger } from '../../../../config/logger';
 
@@ -11,6 +11,10 @@ export class ListProductsQueryHandler {
       limit: query.limit,
       search: query.search,
     });
+
+    // Ensure ERP-DB connection
+    await erpConnectionProvider.ensureConnection();
+    const erpDataSource = erpConnectionProvider.getDataSource();
 
     // Primeiro, buscar a loja virtual para obter a caracteristicaproduto_id
     const lojaRepo = erpDataSource.getRepository(LojaVirtual);

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { erpDataSource } from '../../config/database';
+import { erpConnectionProvider } from '../settings/services/ErpDbConnectionProvider';
 import { Usuario } from '../../entities/erp';
 import { sendSuccess, sendError } from '../../shared/http/responseFormatter';
 import { logger } from '../../config/logger';
@@ -42,6 +42,10 @@ export class AuthController {
         sendError(res, 'Email e senha são obrigatórios', 400);
         return;
       }
+
+      // Ensure ERP-DB connection
+      await erpConnectionProvider.ensureConnection();
+      const erpDataSource = erpConnectionProvider.getDataSource();
 
       const repository = erpDataSource.getRepository(Usuario);
       const usuario = await repository.findOne({

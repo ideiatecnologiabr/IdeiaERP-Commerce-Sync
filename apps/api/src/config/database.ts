@@ -146,22 +146,6 @@ function formatDatabaseError(error: any, dbName: string, config: any): string {
 `;
 }
 
-// ERP Database Configuration
-const erpDbConfig: DataSourceOptions = {
-  type: 'mariadb',
-  host: env.ERP_DB_HOST,
-  port: env.ERP_DB_PORT,
-  username: env.ERP_DB_USER,
-  password: env.ERP_DB_PASSWORD,
-  database: env.ERP_DB_NAME,
-  synchronize: false,
-  logging: env.NODE_ENV === 'development',
-  entities: Object.values(erpEntities),
-  migrations: [],
-  subscribers: [],
-  connectTimeout: 10000, // 10 seconds timeout
-};
-
 // App Database Configuration
 const appDbConfig: DataSourceOptions = {
   type: 'mariadb',
@@ -173,14 +157,15 @@ const appDbConfig: DataSourceOptions = {
   synchronize: env.NODE_ENV === 'development',
   logging: env.NODE_ENV === 'development',
   entities: Object.values(appEntities),
-  migrations: [__dirname + '/../migrations/**/*.ts'],
+  migrations: [__dirname + '/../migrations/**/*.{ts,js}'], // Support both .ts and .js
   subscribers: [],
   connectTimeout: 10000, // 10 seconds timeout
 };
 
 import { createConnection } from 'mysql2/promise';
 
-export const erpDataSource = new DataSource(erpDbConfig);
+// Note: ERP database connection is now managed dynamically by ErpDbConnectionProvider
+// which reads configuration from the settings table
 export const appDataSource = new DataSource(appDbConfig);
 
 async function ensureDatabaseExists(config: DataSourceOptions, dbName: string) {
@@ -214,38 +199,9 @@ async function ensureDatabaseExists(config: DataSourceOptions, dbName: string) {
 }
 
 export async function initializeDatabases(): Promise<void> {
-  try {
-    // Ensure ERP Database exists
-    await ensureDatabaseExists(erpDbConfig, 'ERP');
-
-    // Debug: Log loaded entities
-    const erpEntityNames = Object.values(erpEntities).map((e: any) => e.name || 'Unknown');
-    logger.debug('Loading ERP entities', { 
-      count: erpEntityNames.length,
-      entities: erpEntityNames 
-    });
-    
-    await erpDataSource.initialize();
-    
-    // Debug: Verify entities are registered
-    const registeredEntities = erpDataSource.entityMetadatas.map(m => m.name);
-    logger.debug('Registered ERP entities in TypeORM', { 
-      count: registeredEntities.length,
-      entities: registeredEntities 
-    });
-    
-    logger.info('✅ ERP Database connected successfully', {
-      host: env.ERP_DB_HOST,
-      port: env.ERP_DB_PORT,
-      database: env.ERP_DB_NAME,
-    });
-  } catch (error: any) {
-    const friendlyMessage = formatDatabaseError(error, 'ERP', erpDbConfig);
-    console.error(friendlyMessage);
-    // logger.error('Error connecting to ERP Database', { error: error.message });
-    throw error;
-  }
-
+  // NOTE: This function now only connects to APP_DB
+  // ERP-DB connection is handled by ErpDbConnectionProvider on-demand
+  
   try {
     // Ensure App Database exists
     await ensureDatabaseExists(appDbConfig, 'APP');
@@ -266,6 +222,17 @@ export async function initializeDatabases(): Promise<void> {
       entities: registeredAppEntities 
     });
     
+    // Run pending migrations automatically
+    logger.info('Running pending migrations...');
+    const migrations = await appDataSource.runMigrations({ transaction: 'all' });
+    if (migrations.length > 0) {
+      logger.info(`✅ ${migrations.length} migration(s) executed successfully`, {
+        migrations: migrations.map(m => m.name),
+      });
+    } else {
+      logger.info('No pending migrations to run');
+    }
+    
     logger.info('✅ App Database connected successfully', {
       host: env.APP_DB_HOST,
       port: env.APP_DB_PORT,
@@ -281,11 +248,8 @@ export async function initializeDatabases(): Promise<void> {
 
 export async function closeDatabases(): Promise<void> {
   try {
-    if (erpDataSource.isInitialized) {
-      await erpDataSource.destroy();
-      logger.info('ERP Database connection closed');
-    }
-
+    // Note: ERP-DB connection is managed by ErpDbConnectionProvider
+    // Only close APP_DB here
     if (appDataSource.isInitialized) {
       await appDataSource.destroy();
       logger.info('App Database connection closed');

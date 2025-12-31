@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { erpDataSource } from '../../../config/database';
+import { erpConnectionProvider } from '../../settings/services/ErpDbConnectionProvider';
 import { UsuarioSessaoToken } from '../../../entities/erp';
 import { Usuario } from '../../../entities/erp';
 import { logger } from '../../../config/logger';
@@ -37,6 +37,10 @@ export class TokenService {
    * Cria um novo token de acesso e refresh token
    */
   async createToken(usuario_id: number, usuario: Usuario, req: Request): Promise<TokenInfo> {
+    // Ensure ERP-DB connection
+    await erpConnectionProvider.ensureConnection();
+    const erpDataSource = erpConnectionProvider.getDataSource();
+    
     const repository = erpDataSource.getRepository(UsuarioSessaoToken);
     
     // Gerar UUIDs para os tokens
@@ -105,6 +109,10 @@ export class TokenService {
    */
   async validateToken(token: string): Promise<TokenValidationResult> {
     try {
+      // Ensure ERP-DB connection
+      await erpConnectionProvider.ensureConnection();
+      const erpDataSource = erpConnectionProvider.getDataSource();
+      
       const repository = erpDataSource.getRepository(UsuarioSessaoToken);
       
       // Buscar token (apenas tokens principais, não refresh tokens)
@@ -180,6 +188,10 @@ export class TokenService {
    */
   async refreshToken(refreshToken: string, req: Request): Promise<TokenInfo | null> {
     try {
+      // Ensure ERP-DB connection
+      await erpConnectionProvider.ensureConnection();
+      const erpDataSource = erpConnectionProvider.getDataSource();
+      
       const repository = erpDataSource.getRepository(UsuarioSessaoToken);
       
       // Buscar refresh token (flagpersistente = 1)
@@ -267,6 +279,10 @@ export class TokenService {
    */
   async revokeToken(token: string): Promise<boolean> {
     try {
+      // Ensure ERP-DB connection
+      await erpConnectionProvider.ensureConnection();
+      const erpDataSource = erpConnectionProvider.getDataSource();
+      
       const repository = erpDataSource.getRepository(UsuarioSessaoToken);
       
       const tokenRecord = await repository.findOne({
@@ -308,6 +324,10 @@ export class TokenService {
    */
   async getTokenInfo(token: string): Promise<UsuarioSessaoToken | null> {
     try {
+      // Ensure ERP-DB connection
+      await erpConnectionProvider.ensureConnection();
+      const erpDataSource = erpConnectionProvider.getDataSource();
+      
       const repository = erpDataSource.getRepository(UsuarioSessaoToken);
       
       const tokenRecord = await repository.findOne({

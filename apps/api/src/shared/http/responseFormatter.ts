@@ -36,5 +36,18 @@ export function sendError(
   res.status(statusCode).json(response);
 }
 
-
-
+export function formatResponse<T>(
+  data: T | null,
+  error?: { message: string; code?: string; details?: any }
+): ApiResponse<T> {
+  if (error) {
+    return {
+      success: false,
+      error,
+    };
+  }
+  return {
+    success: true,
+    data: data as T,
+  };
+}

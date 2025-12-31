@@ -136,6 +136,35 @@ const options: swaggerJsdoc.Options = {
             },
           },
         },
+        Setting: {
+          type: 'object',
+          properties: {
+            id: {
+              type: 'integer',
+              description: 'ID único da configuração',
+            },
+            key: {
+              type: 'string',
+              description: 'Chave da configuração',
+              example: 'ERP_DB_HOST',
+            },
+            value: {
+              type: 'string',
+              description: 'Valor da configuração (senha mascarada em leituras)',
+              example: 'localhost',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data de criação',
+            },
+            updatedAt: {
+              type: 'string',
+              format: 'date-time',
+              description: 'Data da última atualização',
+            },
+          },
+        },
       },
     },
     tags: [
@@ -147,6 +176,7 @@ const options: swaggerJsdoc.Options = {
       { name: 'Sync', description: 'Sincronizações' },
       { name: 'Logs', description: 'Logs de sincronização' },
       { name: 'Webhooks', description: 'Webhooks públicos' },
+      { name: 'Settings', description: 'Configurações do sistema' },
     ],
   },
   apis: getApiPaths(),

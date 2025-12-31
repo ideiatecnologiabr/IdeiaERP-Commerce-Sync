@@ -1,4 +1,4 @@
-import { erpDataSource } from '../../../config/database';
+import { erpConnectionProvider } from '../../settings/services/ErpDbConnectionProvider';
 import { LojaVirtual, Produtos, ProdutoCaracteristicaProduto, ProdutoTabelaPreco, ProdutoEstoque } from '../../../entities/erp';
 import { logger } from '../../../config/logger';
 
@@ -13,6 +13,10 @@ export class ProductQueryService {
    * CRITICAL: Always start with lojavirtual table
    */
   async getLojaVirtual(lojavirtual_id: string): Promise<LojaVirtual | null> {
+    // Ensure ERP-DB connection
+    await erpConnectionProvider.ensureConnection();
+    const erpDataSource = erpConnectionProvider.getDataSource();
+    
     const repository = erpDataSource.getRepository(LojaVirtual);
 
     // Buscar loja virtual não excluída (flagexcluido = 0 ou NULL)
@@ -42,6 +46,9 @@ export class ProductQueryService {
       logger.warn(`Loja ${lojavirtual_id} has no caracteristicaproduto_id configured`);
       return [];
     }
+
+    // Get ERP DataSource
+    const erpDataSource = erpConnectionProvider.getDataSource();
 
     const produtoRepo = erpDataSource.getRepository(Produtos);
     const pcpRepo = erpDataSource.getRepository(ProdutoCaracteristicaProduto);

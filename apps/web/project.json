@@ -50,6 +50,9 @@
     },
     "serve": {
       "executor": "@nx/angular:dev-server",
+      "options": {
+        "proxyConfig": "apps/web/proxy.conf.json"
+      },
       "configurations": {
         "production": {
           "buildTarget": "web:build:production"
