@@ -188,7 +188,7 @@ launchctl load ~/Library/LaunchAgents/com.ideiaerp.sync.plist
 
 ## ✅ Warnings Comuns (Podem ser Ignorados)
 
-### Warning: "Failed to make bytecode"
+### Warning: "Failed to make bytecode"pkill -9 -f "ideiaerp-sync-macos"
 
 Você pode ver warnings como:
 ```
