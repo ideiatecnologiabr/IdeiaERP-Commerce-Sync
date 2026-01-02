@@ -186,8 +186,8 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
 
     if (existingMapping) {
       logger.info('Product already mapped, updating instead of creating', { 
-        erp_id: data.codigo, 
-        platform_id: existingMapping.platform_id 
+        erp_id: data.codigo ,
+        platform_id: existingMapping.platform_id
       });
       await this.updateProduct(existingMapping.platform_id, data, Number(existingMapping.platform_id));
       return existingMapping.platform_id;
