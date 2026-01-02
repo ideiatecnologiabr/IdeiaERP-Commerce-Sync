@@ -23,6 +23,9 @@ export interface PlatformConfig {
 
   /** Custom refresh token endpoint */
   refreshEndpoint?: string;
+
+  /** ID of the integration (from lojavirtual.integracao_id) */
+  integracao_id?: number | null;
 }
 
 

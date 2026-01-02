@@ -82,14 +82,11 @@ export class ErpDbConnectionProvider {
         migrations: [],
         subscribers: [],
         connectTimeout: 10000, // 10 seconds timeout
-        // Pool configuration with query timeout
+        // Pool configuration (only valid MySQL2 options)
         extra: {
           connectionLimit: 10,        // Máximo 10 conexões simultâneas
-          idleTimeout: 30000,         // 30s - fecha conexões ociosas
-          maxLifetime: 3600000,       // 1h - renova conexões antigas
-          acquireTimeout: 60000,      // 60s - timeout para adquirir conexão
-          reuseConnection: true,      // Reutilizar conexões do pool
-          queryTimeout: 30000,        // 30s - timeout para queries
+          waitForConnections: true,   // Aguardar se todas as conexões estiverem em uso
+          queueLimit: 0,              // Sem limite de fila (0 = ilimitado)
         },
       };
 

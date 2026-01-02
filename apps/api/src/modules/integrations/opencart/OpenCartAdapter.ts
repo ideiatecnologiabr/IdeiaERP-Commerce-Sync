@@ -25,6 +25,7 @@ interface OpenCartProduct {
   manufacturer_id?: number;
   product_store?: number[];
   product_category?: number[];
+  product_id?: number;
 }
 
 interface OpenCartResponse {
@@ -45,12 +46,14 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
   private authAdapter: AuthAdapter | null;
   private lojavirtual_id: string;
   private accessToken: string | null = null;
+  private integracao_id: number | null; 
 
   constructor(
     config: PlatformConfig,
     tokenManager: TokenManager,
     authAdapter: AuthAdapter | null,
-    lojavirtual_id: string
+    lojavirtual_id: string,
+    integracao_id?: number
   ) {
     if (!config.baseUrl) {
       throw new Error('OpenCart baseUrl is required');
@@ -63,6 +66,7 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
     this.tokenManager = tokenManager;
     this.authAdapter = authAdapter;
     this.lojavirtual_id = lojavirtual_id;
+    this.integracao_id = integracao_id ?? null;
   }
 
   /**
@@ -146,7 +150,7 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
     return {
       product_description: [
         {
-          language_id: 1, // Default to Portuguese (configured via constant or env?)
+          language_id: 2, // Default to Portuguese (configured via constant or env?)
           name: data.nome,
           description: data.descricao || '',
           meta_title: data.nome,
@@ -157,7 +161,7 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
       price: data.preco.toFixed(2),
       quantity: data.estoque.toString(),
       status: 1, // Always active by default on create?
-      product_store: [0], // Default store
+      product_store: this.integracao_id !== null ? [this.integracao_id] : [0]
       // TODO: Map categories, Manufacturer, etc.
     };
   }
@@ -169,14 +173,13 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
 
     logger.info('Processing product for OpenCart', { nome: data.nome, codigo: data.codigo });
 
-    const mappingRepo = appDataSource.getRepository(SyncMapping);
+    const mappingRepo = appDataSource.getRepository(SyncMapping);    
     
-    // Check if product is already mapped
     const existingMapping = await mappingRepo.findOne({
       where: {
         lojavirtual_id: this.lojavirtual_id,
         entidade: 'product',
-        erp_id: data.codigo, // Assuming codigo maps to erp_id
+        erp_id: data.codigo, 
         platform: 'opencart'
       }
     });
@@ -186,13 +189,12 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
         erp_id: data.codigo, 
         platform_id: existingMapping.platform_id 
       });
-      await this.updateProduct(existingMapping.platform_id, data);
+      await this.updateProduct(existingMapping.platform_id, data, Number(existingMapping.platform_id));
       return existingMapping.platform_id;
     }
 
-    // Transform to OpenCart format
     const openCartProduct = this.toOpenCartProduct(data);
-
+    
     logger.info('Creating new product in OpenCart', { payload: openCartProduct });
 
     const response = await this.makeRequest(`${this.baseUrl}/index.php?route=api_ocft/admin/products/add`, {
@@ -233,60 +235,13 @@ export class OpenCartAdapter implements CommercePlatformAdapter {
     return platformId;
   }
 
-  async updateProduct(id: string, data: ProductDTO): Promise<void> {
+  async updateProduct(id: string, data: ProductDTO, productPlatformId: number): Promise<void> {
     logger.info('Updating product in OpenCart', { id, nome: data.nome });
-
-    // We might need to fetch the existing product to preserve some fields? 
-    // Or just overwrite. OpenCart API usually expects full object or specific fields?
-    // The user example shows the same structure for add. "http://localhost/lojavirtual/index.php?route=api_ocft/admin/products/edit&product_id=..."
-    // Implementation plan assumed just calling the endpoint.
     
     const openCartProduct = this.toOpenCartProduct(data);
+    openCartProduct.product_id = productPlatformId;
 
-    // Note: The OpenCart REST API endpoint for edit usually requires product_id in query or path
-    // User URL: route=api_ocft/admin/products/edit
-    // My implementation assumed RESTful /api/rest/products/:id PUT.
-    // I will stick to the RESTful assumption from previous code unless instructed otherwise, 
-    // but the user mentions "api_ocft/admin/products/edit". 
-    // Wait, the user provided curl for ADD: "route=api_ocft/admin/products/add".
-    // AND said update is "route=api_ocft/admin/products/edit".
-    // This looks like a specific OpenCart extension.
-    // However, the *existing* code used `${this.baseUrl}/api/rest/products`.
-    // I should probably check if I should change the URL structure to match the user's CURL example?
-    // The user example: `http://localhost/lojavirtual/index.php?route=api_ocft%2Fadmin%2Fproducts%2Fadd`
-    // This implies the `baseUrl` might need to be without `index.php?...` and I append the route?
-    // OR the existing code was for a different REST plugin.
-    // The user explicitly gave the CURL example. I should probably align with that if it's the intended API.
-    // BUT, the existing code has `${this.baseUrl}/api/rest/products`. 
-    // If I change to `index.php?route...` I might break things if `baseUrl` includes `api/rest`.
-    // I will stick to what looks like the *REST convention* of the existing code, 
-    // but allow the `toOpenCartProduct` logic to be used. 
-    // If the user *wants* me to change the Endpoint URL structure, I would need to know the Base URL format.
-    // I will assume the existing `makeRequest` and URL structure is correct for the INSTALLED plugin, 
-    // as the User Request focused on the *Body* and the *Logic*, not necessarily replacing the entire API Client URL structure unless implied.
-    // Actually, looking at the User Request: "Abaixo um exemplo para chamar o método de cadastro de produto."
-    // It uses `api_ocft`. This suggests I SHOULD use this route.
-    // If the current code uses `/api/rest/products`, it might be for a *different* plugin.
-    // However, I should probably respect the *existing* class structure unless I'm rewriting the adapter for a new API.
-    // Given the prompt is "create the interface... for transformer", I will prioritize the transformer and logic.
-    // I'll keep the `createProduct` implementation using the transformer. 
-    // I'll leave the URL as is for now, OR better, I'll adapt it if I feel confident. 
-    // The user didn't explicitly say "Change the URL endpoint", but "Here is an example to call...".
-    // I will assume the provided URL is the *correct* one for this project.
-    // EXCEPT, `baseUrl` is usually just the domain.
-    // I will assume the *existing* code might be legacy or wrong if the user provides a specific CURL.
-    // BUT changing the URL strategy might be risky without verification.
-    // I'll stick to the existing URL pattern but use the new Body payload which is what was requested.
-    // Wait, the existing code: `${this.baseUrl}/api/rest/products`
-    // User Example: `index.php?route=api_ocft/admin/products/add`
-    // These are very different.
-    // I will implement the transformer and logic. I will *not* change the URL structure in this step 
-    // unless the previous code was just a placeholder. 
-    // The previous code had `api/rest/products`, which looks like the popular "OpenCart REST Admin API".
-    // The user's example `api_ocft` looks like a custom or specific extension.
-    // I will use the *user's* payload structure.
-    
-    const response = await this.makeRequest(`${this.baseUrl}/api/rest/products/${id}`, {
+    const response = await this.makeRequest(`${this.baseUrl}/index.php?route=api_ocft/admin/products/edit`, {
       method: 'PUT',
       body: JSON.stringify(openCartProduct),
     });

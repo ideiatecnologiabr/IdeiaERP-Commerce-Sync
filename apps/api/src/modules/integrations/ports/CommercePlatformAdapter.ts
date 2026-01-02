@@ -60,7 +60,7 @@ export interface HealthCheckResult {
 
 export interface CommercePlatformAdapter {
   createProduct(data: ProductDTO): Promise<string>;
-  updateProduct(id: string, data: ProductDTO): Promise<void>;
+  updateProduct(id: string, data: ProductDTO, productPlatformId: number): Promise<void>;
   syncStock(id: string, quantity: number): Promise<void>;
   syncPrice(id: string, price: number): Promise<void>;
   getOrders(filters: OrderFilters): Promise<OrderDTO[]>;

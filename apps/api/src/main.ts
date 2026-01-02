@@ -58,9 +58,28 @@ async function bootstrap() {
 
     // Start server
     const port = getEnv().PORT;
+    const isPkgExecutable = !!(process as any).pkg;
+    
     const server = app.listen(port, () => {
       logger.info(`Server is running on port ${port}`);
       logger.info(`Health check available at http://localhost:${port}/health`);
+      
+      // Se for executável pkg, abrir navegador automaticamente
+      if (isPkgExecutable) {
+        const url = `http://localhost:${port}/app/`;
+        logger.info(`Opening browser at ${url}`);
+        
+        // Aguardar 1 segundo para garantir que o servidor está pronto
+        setTimeout(() => {
+          try {
+            const open = require('open');
+            open(url);
+            logger.info('Browser opened successfully');
+          } catch (error) {
+            logger.warn('Failed to open browser automatically. Please open manually:', { url, error });
+          }
+        }, 1000);
+      }
     });
 
     // Graceful shutdown handler

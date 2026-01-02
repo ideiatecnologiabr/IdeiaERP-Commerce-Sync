@@ -4,7 +4,9 @@ import { ListProductsQuery } from '../sync/queries/ListProductsQuery';
 import { SyncProductByIdCommandHandler } from '../sync/commands/handlers/SyncProductByIdCommandHandler';
 import { sendSuccess, sendError } from '../../shared/http/responseFormatter';
 import { logger } from '../../config/logger';
+import { SyncLogService } from '../sync/services/SyncLogService';
 
+const logService = new SyncLogService();
 /**
  * @swagger
  * /api/v1/admin/lojavirtual/{lojavirtual_id}/produtos:
@@ -100,6 +102,19 @@ export class ProductController {
 
       const handler = new SyncProductByIdCommandHandler();
       await handler.handle({ lojavirtual_id, produto_id } as any);
+
+      // Log success
+      await logService.log({
+        lojavirtual_id: lojavirtual_id,
+        tipo: 'product',
+        acao: 'sync',
+        entidade: 'catalog',
+        entidade_id : produto_id,
+        status: 'success',
+        mensagem: 'Sync manual product completed successfully',
+        detalhes: JSON.stringify({ lojavirtual_id, produto_id }),
+      });
+
 
       sendSuccess(res, { message: 'Produto sincronizado com sucesso' });
     } catch (error: any) {

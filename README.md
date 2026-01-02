@@ -82,9 +82,6 @@ APP_DB_USER=root
 APP_DB_PASSWORD=
 APP_DB_NAME=ideiaerp_sync
 
-# OpenCart
-OPENCART_URL=https://example.com
-OPENCART_API_KEY=
 
 # Webhooks
 WEBHOOK_TOKEN_OPENCART=
