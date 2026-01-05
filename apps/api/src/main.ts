@@ -31,12 +31,48 @@ import { setupCronJobs } from './shared/cron/cronJobs';
 import { SettingsService } from './modules/settings/services/SettingsService';
 import { getHealthCheckInstance } from './modules/settings/services/ConnectionHealthCheck';
 import { erpConnectionProvider } from './modules/settings/services/ErpDbConnectionProvider';
+import * as readline from 'readline';
+
+// Função para aguardar entrada do usuário antes de fechar (Windows)
+function waitForUserInput(message: string = 'Pressione Enter para sair...'): Promise<void> {
+  return new Promise((resolve) => {
+    const isPkgExecutable = !!(process as any).pkg;
+    const isWindows = process.platform === 'win32';
+    
+    // Se for executável pkg no Windows, manter a janela aberta
+    if (isPkgExecutable && isWindows) {
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+      
+      console.log('\n' + message);
+      rl.question('', () => {
+        rl.close();
+        resolve();
+      });
+    } else {
+      // Em outros casos, não aguardar
+      resolve();
+    }
+  });
+}
 
 async function bootstrap() {
   try {
     // Validate environment (only APP_DB variables are required now)
-    getEnv();
-    logger.info('Environment validated');
+    try {
+      getEnv();
+      logger.info('Environment validated');
+    } catch (envError: any) {
+      console.error('\n❌ Erro ao validar variáveis de ambiente:');
+      console.error(envError.message || envError);
+      const isPkgExecutable = !!(process as any).pkg;
+      if (isPkgExecutable && process.platform === 'win32') {
+        await waitForUserInput('Pressione Enter para fechar...');
+      }
+      process.exit(1);
+    }
 
     // Initialize APP database only (ERP-DB is connected on-demand)
     await initializeDatabases();
@@ -79,7 +115,34 @@ async function bootstrap() {
             logger.warn('Failed to open browser automatically. Please open manually:', { url, error });
           }
         }, 1000);
+        
+        // Mensagem para manter a janela aberta no Windows
+        if (process.platform === 'win32') {
+          console.log('\n═══════════════════════════════════════════════════════════');
+          console.log('  Servidor rodando! A janela permanecerá aberta.');
+          console.log(`  Acesse: http://localhost:${port}/app/`);
+          console.log('  Pressione Ctrl+C para parar o servidor.');
+          console.log('═══════════════════════════════════════════════════════════\n');
+        }
       }
+    });
+
+    // Tratamento de erro ao iniciar o servidor (ex: porta ocupada)
+    server.on('error', async (error: any) => {
+      if (error.code === 'EADDRINUSE') {
+        console.error(`\n❌ Erro: A porta ${port} já está em uso.`);
+        console.error('   Feche o aplicativo que está usando esta porta ou altere a variável PORT no arquivo .env\n');
+      } else {
+        console.error('\n❌ Erro ao iniciar o servidor:');
+        console.error(error.message || error);
+        logger.error('Server error:', error);
+      }
+      
+      const isPkgExecutable = !!(process as any).pkg;
+      if (isPkgExecutable && process.platform === 'win32') {
+        await waitForUserInput('Pressione Enter para fechar...');
+      }
+      process.exit(1);
     });
 
     // Graceful shutdown handler
@@ -106,6 +169,13 @@ async function bootstrap() {
         await closeDatabases();
 
         logger.info('Graceful shutdown completed');
+        
+        // Se for executável pkg no Windows, aguardar antes de fechar
+        const isPkgExecutable = !!(process as any).pkg;
+        if (isPkgExecutable && process.platform === 'win32') {
+          await waitForUserInput('Servidor encerrado. Pressione Enter para fechar...');
+        }
+        
         process.exit(0);
       });
 
@@ -120,8 +190,16 @@ async function bootstrap() {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error: any) {
-    // Don't log stack trace here - friendly error message was already shown
+    // Log do erro completo para debug
+    logger.error('Error during bootstrap:', error);
     console.error('\n❌ Falha ao iniciar o servidor. Corrija os erros acima e tente novamente.\n');
+    
+    // Se for executável pkg no Windows, aguardar antes de fechar
+    const isPkgExecutable = !!(process as any).pkg;
+    if (isPkgExecutable && process.platform === 'win32') {
+      await waitForUserInput('Pressione Enter para fechar...');
+    }
+    
     process.exit(1);
   }
 }

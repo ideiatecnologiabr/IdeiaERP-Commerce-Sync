@@ -11,8 +11,8 @@ const envSchema = z.object({
   // App Database
   APP_DB_HOST: z.string().default('localhost'), 
   APP_DB_PORT: z.coerce.number().default(3307),
-  APP_DB_USER: z.string().default('ideiaerp_user'),
-  APP_DB_PASSWORD: z.string().default('ideiaerp_password'),
+  APP_DB_USER: z.string().default('root'),
+  APP_DB_PASSWORD: z.string().default('ideia'),
   APP_DB_NAME: z.string().default('ideiaerp_sync'),
 
   // OpenCart
