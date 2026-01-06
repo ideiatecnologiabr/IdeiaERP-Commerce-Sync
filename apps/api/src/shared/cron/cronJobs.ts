@@ -8,6 +8,8 @@ import { SyncPricesCommandHandler } from '../../modules/sync/commands/handlers/S
 import { SyncStockCommandHandler } from '../../modules/sync/commands/handlers/SyncStockCommandHandler';
 import { SyncOrdersCommandHandler } from '../../modules/sync/commands/handlers/SyncOrdersCommandHandler';
 import { ListLojasVirtuaisQueryHandler } from '../../modules/sync/queries/handlers/ListLojasVirtuaisQueryHandler';
+import { formatDatabaseQueryError } from '../utils/databaseErrorFormatter';
+import { QueryFailedError } from 'typeorm';
 
 const env = getEnv();
 const lockService = new SyncLockService();
@@ -19,6 +21,12 @@ const logService = new SyncLogService();
 function isDatabaseConnectionError(error: any): boolean {
   const errorCode = error.code || error.errno;
   const errorMessage = error.message || '';
+  const errorName = error.name || '';
+  
+  // Check for ErpDatabaseUnavailableError
+  if (errorName === 'ErpDatabaseUnavailableError' || error.code === 'ERP_DB_UNAVAILABLE') {
+    return true;
+  }
   
   return (
     errorCode === 'ETIMEDOUT' ||
@@ -27,7 +35,22 @@ function isDatabaseConnectionError(error: any): boolean {
     errorCode === 'ER_ACCESS_DENIED_ERROR' ||
     errorMessage.includes('ETIMEDOUT') ||
     errorMessage.includes('Connection lost') ||
-    errorMessage.includes('connect ECONNREFUSED')
+    errorMessage.includes('connect ECONNREFUSED') ||
+    errorMessage.includes('Não foi possível conectar ao banco de dados do ERP')
+  );
+}
+
+/**
+ * Checks if error is a database query error (column/table not found, etc)
+ */
+function isDatabaseQueryError(error: any): boolean {
+  const errorCode = error.code || error.errno;
+  return (
+    errorCode === 'ER_BAD_FIELD_ERROR' ||
+    errorCode === 1054 ||
+    errorCode === 'ER_NO_SUCH_TABLE' ||
+    errorCode === 1146 ||
+    error instanceof QueryFailedError
   );
 }
 
@@ -36,16 +59,35 @@ function isDatabaseConnectionError(error: any): boolean {
  */
 function formatCronDatabaseError(error: any, tipo: string): string {
   const errorCode = error.code || error.errno;
+  const errorName = error.name || '';
+  const errorMessage = error.message || '';
   
-  if (errorCode === 'ETIMEDOUT' || error.message?.includes('ETIMEDOUT')) {
+  // Check for database query errors (column/table not found)
+  if (isDatabaseQueryError(error)) {
+    const friendlyMessage = formatDatabaseQueryError(error, `CRON Sync ${tipo.toUpperCase()}`);
+    return friendlyMessage;
+  }
+  
+  // Check for ErpDatabaseUnavailableError specifically
+  if (errorName === 'ErpDatabaseUnavailableError' || errorCode === 'ERP_DB_UNAVAILABLE') {
+    return `⚠️  [SYNC ${tipo.toUpperCase()}] ERP-DB não disponível. Verifique:\n` +
+           `   1. Se o servidor MySQL/MariaDB está rodando\n` +
+           `   2. Se as configurações de conexão estão corretas (Configurações → ERP Database)\n` +
+           `   3. Se o arquivo config.ini existe e está configurado corretamente\n` +
+           `   Erro: ${errorMessage}`;
+  }
+  
+  if (errorCode === 'ETIMEDOUT' || errorMessage.includes('ETIMEDOUT')) {
     return `⚠️  [SYNC ${tipo.toUpperCase()}] Banco de dados não respondeu (timeout). Verifique se o servidor está rodando.`;
   }
   
   if (errorCode === 'ECONNREFUSED') {
-    return `⚠️  [SYNC ${tipo.toUpperCase()}] Não foi possível conectar ao banco de dados. Servidor pode estar desligado.`;
+    return `⚠️  [SYNC ${tipo.toUpperCase()}] Conexão recusada ao ERP-DB (${errorCode}).\n` +
+           `   O servidor MySQL/MariaDB pode estar desligado ou a porta está incorreta.\n` +
+           `   Verifique as configurações em: Configurações → ERP Database`;
   }
   
-  return `⚠️  [SYNC ${tipo.toUpperCase()}] Erro de conexão com banco de dados: ${error.message}`;
+  return `⚠️  [SYNC ${tipo.toUpperCase()}] Erro de conexão com banco de dados: ${errorMessage}`;
 }
 
 // Store cron tasks for manual execution
@@ -248,8 +290,8 @@ async function executeSyncForAllLojas(
         } catch (error: any) {
           const lojaDuration = Date.now() - lojaStartTime;
           
-          // Check if it's a database connection error
-          if (isDatabaseConnectionError(error)) {
+          // Check if it's a database error (connection or query)
+          if (isDatabaseConnectionError(error) || isDatabaseQueryError(error)) {
             const friendlyMessage = formatCronDatabaseError(error, tipo);
             console.error(friendlyMessage);
             logger.error(friendlyMessage);
@@ -282,7 +324,7 @@ async function executeSyncForAllLojas(
           }
         }
       } catch (error: any) {
-        if (isDatabaseConnectionError(error)) {
+        if (isDatabaseConnectionError(error) || isDatabaseQueryError(error)) {
           const friendlyMessage = formatCronDatabaseError(error, tipo);
           console.error(friendlyMessage);
           logger.error(friendlyMessage);
@@ -297,8 +339,8 @@ async function executeSyncForAllLojas(
   } catch (error: any) {
     const totalDuration = Date.now() - startTime;
     
-    // Check if it's a database connection error
-    if (isDatabaseConnectionError(error)) {
+    // Check if it's a database error (connection or query)
+    if (isDatabaseConnectionError(error) || isDatabaseQueryError(error)) {
       const friendlyMessage = formatCronDatabaseError(error, tipo);
       console.error(friendlyMessage);
       logger.error(friendlyMessage);

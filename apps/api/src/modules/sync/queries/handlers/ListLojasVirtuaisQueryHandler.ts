@@ -1,6 +1,8 @@
 import { ListLojasVirtuaisQuery } from '../ListLojasVirtuaisQuery';
 import { erpConnectionProvider } from '../../../settings/services/ErpDbConnectionProvider';
 import { LojaVirtual } from '../../../../entities/erp';
+import { executeQueryWithErrorHandling, formatDatabaseQueryError } from '../../../../shared/utils/databaseErrorFormatter';
+import { logger } from '../../../../config/logger';
 
 export class ListLojasVirtuaisQueryHandler {
   async handle(query: ListLojasVirtuaisQuery) {
@@ -23,9 +25,25 @@ export class ListLojasVirtuaisQueryHandler {
       // Não aplica nenhum filtro
     }
 
-    const data = await qb.getMany();
-
-    return { data };
+    try {
+      const data = await qb.getMany();
+      return { data };
+    } catch (error: any) {
+      // Formatar erro de forma amigável
+      const friendlyMessage = formatDatabaseQueryError(
+        error,
+        'Listagem de Lojas Virtuais (ListLojasVirtuaisQueryHandler)'
+      );
+      
+      logger.error('Error listing lojas virtuais', {
+        error: error.message,
+        code: error.code,
+        sql: error.sql,
+      });
+      
+      // Re-lançar o erro para que o chamador possa tratá-lo
+      throw error;
+    }
   }
 }
 

@@ -1,12 +1,6 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  // ERP Database
-  // ERP_DB_HOST: z.string().default('localhost'),
-  // ERP_DB_PORT: z.coerce.number().default(3306),
-  // ERP_DB_USER: z.string().default('root'),
-  // ERP_DB_PASSWORD: z.string().default('ideia'),
-  // ERP_DB_NAME: z.string().default('simplao'),
 
   // App Database
   APP_DB_HOST: z.string().default('localhost'), 
@@ -28,10 +22,6 @@ const envSchema = z.object({
   CRON_SYNC_STOCK: z.string().default('*/15 * * * *'),
   CRON_SYNC_ORDERS: z.string().default('*/5 * * * *'),
 
-  // Security
-  // SESSION_SECRET: z.string().min(32), // REMOVIDO - agora vem do DB
-  // JWT_SECRET: z.string().min(32).optional(),
-  
   // Token Configuration
   TOKEN_EXPIRATION_MINUTES: z.coerce.number().default(360),
   REFRESH_TOKEN_EXPIRATION_DAYS: z.coerce.number().default(7),

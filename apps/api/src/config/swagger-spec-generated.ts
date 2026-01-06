@@ -1,5 +1,5 @@
 // Auto-generated file - DO NOT EDIT
-// Generated at: 2026-01-05T18:19:56.948Z
+// Generated at: 2026-01-06T19:13:30.778Z
 
 export const preGeneratedSwaggerSpec = {
   "openapi": "3.0.0",

@@ -54,6 +54,48 @@ O executável gerado (`ideiaerp-sync-win.exe`) contém:
 - ✅ Todas as dependências compiladas
 - ✅ Código JavaScript compilado
 - ✅ Assets necessários
+- ✅ Metadados do Windows (versão, descrição, empresa)
+- ✅ Ícone personalizado (se fornecido)
+
+## 🎨 Personalização do Executável
+
+### Metadados do Executável
+
+O executável Windows inclui automaticamente os seguintes metadados:
+- **Nome do Produto**: IdeiaERP Commerce Sync
+- **Descrição**: Sistema de sincronização entre IdeiaERP e lojas virtuais
+- **Versão**: Lida automaticamente do `package.json`
+- **Empresa**: IdeiaERP
+- **Copyright**: Copyright © [ano atual] IdeiaERP
+
+Esses metadados aparecem nas propriedades do arquivo no Windows (clique com botão direito → Propriedades → Detalhes).
+
+### Adicionar Ícone Personalizado
+
+Para adicionar um ícone ao executável:
+
+1. **Crie ou obtenha um arquivo `.ico`**
+   - Tamanho recomendado: 256x256 pixels
+   - Pode conter múltiplos tamanhos (16x16, 32x32, 48x48, 256x256)
+
+2. **Coloque o arquivo no diretório de assets:**
+   ```
+   apps/api/assets/icon.ico
+   ```
+
+3. **Compile normalmente:**
+   ```bash
+   npm run build:api:win
+   ```
+
+O script de build detectará automaticamente o ícone e o aplicará ao executável.
+
+**Como criar um arquivo .ico:**
+- Use conversores online: https://convertio.co/png-ico/
+- Use ferramentas como GIMP, Photoshop ou IcoFX
+- Veja mais detalhes em `apps/api/assets/README.md`
+
+**Nota:** Se o ícone não for encontrado, o build continuará normalmente, mas o executável não terá ícone personalizado.
 
 ## ⚙️ Configuração
 

@@ -31,6 +31,7 @@ import { setupCronJobs } from './shared/cron/cronJobs';
 import { SettingsService } from './modules/settings/services/SettingsService';
 import { getHealthCheckInstance } from './modules/settings/services/ConnectionHealthCheck';
 import { erpConnectionProvider } from './modules/settings/services/ErpDbConnectionProvider';
+import { bootstrapConfigFromIni } from './config/configBootstrap';
 import * as readline from 'readline';
 
 // Função para aguardar entrada do usuário antes de fechar (Windows)
@@ -60,7 +61,12 @@ function waitForUserInput(message: string = 'Pressione Enter para sair...'): Pro
 
 async function bootstrap() {
   try {
-    // Validate environment (only APP_DB variables are required now)
+    // STEP 1: Bootstrap configuration from config.ini (if exists)
+    // This must happen BEFORE environment validation and database initialization
+    // because it updates process.env with database credentials from config.ini
+    const configResult = await bootstrapConfigFromIni();
+
+    // STEP 2: Validate environment (only APP_DB variables are required now)
     try {
       getEnv();
       logger.info('Environment validated');
@@ -74,12 +80,24 @@ async function bootstrap() {
       process.exit(1);
     }
 
-    // Initialize APP database only (ERP-DB is connected on-demand)
+    // STEP 3: Initialize APP database (now using credentials from config.ini if available)
     await initializeDatabases();
 
-    // Ensure settings defaults exist
+    // STEP 4: Initialize settings and save ERP config if loaded from config.ini
     const settingsService = new SettingsService();
     await settingsService.ensureDefaults();
+    
+    if (configResult.shouldSaveErpConfig && configResult.erpConfig) {
+      // Update ERP database settings from config.ini
+      await settingsService.set('ERP_DB_HOST', configResult.erpConfig.host);
+      await settingsService.set('ERP_DB_PORT', configResult.erpConfig.port.toString());
+      await settingsService.set('ERP_DB_NAME', configResult.erpConfig.database);
+      await settingsService.set('ERP_DB_USER', configResult.erpConfig.user);
+      await settingsService.set('ERP_DB_PASSWORD', configResult.erpConfig.password);
+      
+      logger.info('✅ ERP database settings updated from config.ini');
+    }
+    
     logger.info('Settings initialized');
 
     // Create Express app (now async)

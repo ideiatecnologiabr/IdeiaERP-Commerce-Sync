@@ -1,18 +1,21 @@
+name: ideiaerp-sync
+
 services:
   app-db:
     image: mariadb:10.11
-    container_name: ideiaerp-sync-db
+    container_name: ideiaerp_db
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpassword
-      MYSQL_DATABASE: ideiaerp_sync
-      MYSQL_USER: ideiaerp_user
-      MYSQL_PASSWORD: ideiaerp_password
+      MYSQL_ROOT_PASSWORD: ideia
+      MYSQL_DATABASE: ideiaerp
+      MYSQL_USER: root
+      MYSQL_PASSWORD: ideia
     ports:
       - "3307:3306"
     volumes:
       - app-db-data:/var/lib/mysql
       - ./docker/mariadb/init:/docker-entrypoint-initdb.d
+      - ./docker/mariadb/my.cnf:/etc/mysql/conf.d/my.cnf:ro
     networks:
       - ideiaerp-network
     healthcheck:
